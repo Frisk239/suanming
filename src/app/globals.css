@@ -69,3 +69,23 @@ body {
   font-family: var(--font-serif);
   letter-spacing: 0.05em;
 }
+
+/*
+ * 表单复用组件类（spec 5.5 录入表单）。Tailwind v4 用 @layer components
+ * + @apply 组合 utility。BirthForm.tsx 等组件引用这些类。
+ */
+@layer components {
+  /* 输入框 / 下拉框统一样式 */
+  .input {
+    @apply flex-1 px-2 py-1.5 border border-ink-100 rounded text-sm bg-ink-50;
+    @apply focus:outline-none focus:border-accent;
+  }
+  /* 分段按钮（性别按钮组） */
+  .seg-btn {
+    @apply flex-1 py-1.5 px-3 border border-ink-100 rounded text-sm;
+    @apply hover:bg-ink-50 transition-colors;
+  }
+  .seg-btn-active {
+    @apply bg-ink-900 text-ink-50 border-ink-900;
+  }
+}
