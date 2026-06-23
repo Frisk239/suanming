@@ -5,14 +5,45 @@
   --foreground: #171717;
 }
 
+/*
+ * 设计令牌（spec 5.4 视觉基调）。
+ *
+ * 全部放 @theme inline（M1 已验证可工作的形式）：墨色主调 + 五行点缀色 +
+ * 强调色 + 字体栈。inline 模式把令牌值内联进 utility class
+ * （text-ink-900 / bg-wx-mu / text-accent 等），并输出到 :root 供 var() 引用。
+ *
+ * 实测（2026-06-23）：单块 @theme inline 是 Turbopack dev 的稳定形式；
+ * 不要拆成两个 @theme 块（会触发 Turbopack panic）。
+ */
 @theme inline {
+  /* 保留 M1 已有的 --color-background/--color-foreground */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* 主色调：墨色系（spec 5.4 墨色主调） */
+  --color-ink-50: #f5f5f4;
+  --color-ink-100: #e7e5e4;
+  --color-ink-200: #d6d3d1;
+  --color-ink-300: #a8a29e;
+  --color-ink-500: #57534e;
+  --color-ink-700: #292524;
+  --color-ink-900: #1c1917;
+
+  /* 强调色：青色系（古意，spec 5.4） */
+  --color-accent: #4a7c59;
+  --color-accent-deep: #355e3b;
+
+  /* 五行点缀色（对齐 mingyu styles.css 五行配色，spec 5.4） */
+  --color-wx-jin: #6b7280; /* 金-银灰 */
+  --color-wx-mu: #15803d; /* 木-青绿 */
+  --color-wx-shui: #2563eb; /* 水-蓝 */
+  --color-wx-huo: #b91c1c; /* 火-赤（略沉，避免过于刺眼） */
+  --color-wx-tu: #b45309; /* 土-黄褐 */
+
   /* 系统字体栈：标题衬线显古意，正文无衬线保可读（spec 5.4） */
   --font-sans: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei",
     "PingFang SC", sans-serif;
-  --font-serif: "Songti SC", "SimSun", "Noto Serif SC", "Source Han Serif SC",
-    serif;
+  --font-serif: "Songti SC", "SimSun", "Source Han Serif SC", serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +55,17 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: var(--color-ink-700);
   font-family: var(--font-sans);
+}
+
+/*
+ * 标题用衬线显古意（spec 5.4：标题衬线、正文无衬线）。
+ * 用系统衬线字体栈（Songti SC / SimSun / Source Han Serif SC），
+ * 各平台原生支持，无需联网下载。@theme inline 的 --font-serif 令牌
+ * 已含该栈，这里直接引用保持单一来源。
+ */
+.font-serif-display {
+  font-family: var(--font-serif);
+  letter-spacing: 0.05em;
 }
