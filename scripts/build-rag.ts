@@ -1,38 +1,101 @@
 // scripts/build-rag.ts
-// 建库：sample 语料 → 切片 → BGE-M3 embedding → Supabase knowledge_chunks。
-// 运行：npx tsx scripts/build-rag.ts
+// 建库：把切片 + embedding 写入 Supabase knowledge_chunks。
 //
-// 增量式：边 embed 边写库（每 WRITE_EVERY 条插入一次），重跑从断点续跑。
-//   - 首次：清空旧数据，从头 embed
-//   - 重跑：读已入库行数 N，跳过前 N 条已 embed 的 chunk，从第 N+1 条继续
-//   - 适合 CPU 慢推理（单条 ~2s）+ 可能被 exec 超时杀的场景，进度不丢
+// 两种模式（推荐 load,GPU 快）：
+//   npx tsx scripts/build-rag.ts            # 默认 = load 模式（读 Python GPU 生成的 embeddings.json）
+//   npx tsx scripts/build-rag.ts load       # 同上
+//   npx tsx scripts/build-rag.ts incremental# TS ONNX CPU 逐条 embed（慢,断点续跑,fallback）
 //
-// 环境要求（见 docs/superpowers/HANDOFF.md "M3 关键注意点"）：
-//   - .env.local 含 Supabase key + HTTPS_PROXY（本机需走 7890 代理连 Supabase/HF）
-//   - DDL（建索引）走不了 HTTP 代理：建库后去 Supabase Dashboard 执行 0002_rag_indexes.sql
+// GPU 路径(推荐):
+//   1. npx tsx scripts/export-chunks.ts        # 导出 chunks.json
+//   2. conda run -n sk-learn python scripts/gh-embed.py  # GPU 批量 embed → embeddings.json
+//   3. npx tsx scripts/build-rag.ts load       # 读 embeddings.json 插库
+//
+// 环境要求：
+//   - .env.local 含 Supabase key + HTTPS_PROXY（本机走 7890 代理连 Supabase）
+//   - DDL（建索引）走不了代理：建库后去 Supabase Dashboard 执行 0002_rag_indexes.sql
 
 import { loadAllCorpus } from '../src/lib/rag/corpus-loader';
 import { chunkAll } from '../src/lib/rag/chunker';
 import { embed } from '../src/lib/rag/embedder';
 import { createAdmin } from '../src/lib/supabase/admin';
 import dotenv from 'dotenv';
+import fs from 'node:fs';
+import path from 'node:path';
 
 dotenv.config({ path: '.env.local' });
 
-const WRITE_EVERY = 20; // 每完成这么多条就写库一次（进度落盘）
+const mode = process.argv[2] ?? 'load';
 
-async function main() {
+/** 公共：清空旧数据 */
+async function clearTable() {
+  const supabase = createAdmin();
+  const { error } = await supabase
+    .from('knowledge_chunks')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) {
+    console.error('清空失败:', error);
+    process.exit(1);
+  }
+  console.log('  已清空旧数据');
+}
+
+/** 公共：批量插入（每 100 条一批） */
+async function insertAll(
+  rows: Array<{
+    book: string;
+    chapter: string;
+    category: string;
+    content: string;
+    translation: string | null;
+    embedding: number[];
+  }>,
+) {
+  const supabase = createAdmin();
+  const BATCH = 100;
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const batch = rows.slice(i, i + BATCH);
+    const { error } = await supabase.from('knowledge_chunks').insert(batch);
+    if (error) {
+      console.error(`插入失败（#${i}-${i + BATCH}）:`, error);
+      process.exit(1);
+    }
+    console.log(`  插入 ${Math.min(i + BATCH, rows.length)}/${rows.length}`);
+  }
+}
+
+/** load 模式：读 embeddings.json（Python GPU 生成）插库 */
+async function loadMode() {
+  const embPath = path.resolve(process.cwd(), 'scripts/data/embeddings.json');
+  if (!fs.existsSync(embPath)) {
+    console.error(`找不到 ${embPath}`);
+    console.error('请先按顺序执行：');
+    console.error('  1. npx tsx scripts/export-chunks.ts');
+    console.error('  2. conda run -n sk-learn python scripts/gh-embed.py');
+    process.exit(1);
+  }
+  console.log('=== load 模式：读 embeddings.json ===');
+  const records = JSON.parse(fs.readFileSync(embPath, 'utf-8'));
+  console.log(`  记录数：${records.length}`);
+  console.log('=== 清空旧数据 ===');
+  await clearTable();
+  console.log('=== 插入 Supabase ===');
+  await insertAll(records);
+  await reportCount();
+}
+
+/** incremental 模式：TS ONNX CPU 逐条 embed，断点续跑（fallback，慢） */
+async function incrementalMode() {
+  console.log('=== incremental 模式（TS ONNX CPU，断点续跑）===');
   console.log('=== 1. 加载语料 ===');
   const docs = loadAllCorpus();
   console.log(`  原始文档：${docs.length}`);
-
   console.log('=== 2. 切片 ===');
   const chunks = chunkAll(docs);
   console.log(`  切片数：${chunks.length}`);
 
   const supabase = createAdmin();
-
-  // 读已入库行数（断点续跑）
   const { count: existing } = await supabase
     .from('knowledge_chunks')
     .select('*', { count: 'exact', head: true });
@@ -41,22 +104,15 @@ async function main() {
 
   if (startIdx === 0) {
     console.log('=== 3. 首次建库，清空旧数据 ===');
-    const { error: delErr } = await supabase
-      .from('knowledge_chunks')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
-    if (delErr) {
-      console.error('清空失败:', delErr);
-      process.exit(1);
-    }
+    await clearTable();
   } else if (startIdx >= chunks.length) {
     console.log(`\n=== 已全部建库（${startIdx}/${chunks.length}），无需继续 ===`);
     process.exit(0);
   } else {
-    console.log(`=== 3. 从断点续跑（跳过前 ${startIdx} 条，从 ${startIdx + 1} 开始）===`);
+    console.log(`=== 3. 从断点续跑（跳过前 ${startIdx} 条）===`);
   }
 
-  console.log(`=== 4. 增量 embedding + 插入（每 ${WRITE_EVERY} 条落盘）===`);
+  const WRITE_EVERY = 20;
   let buf: Array<{
     book: string;
     chapter: string;
@@ -84,7 +140,6 @@ async function main() {
       embedding,
     });
     done = i + 1;
-
     if (buf.length >= WRITE_EVERY) {
       const { error } = await supabase.from('knowledge_chunks').insert(buf);
       if (error) {
@@ -95,7 +150,6 @@ async function main() {
       console.log(`  已落盘 ${done}/${chunks.length}`);
     }
   }
-  // 尾巴
   if (buf.length > 0) {
     const { error } = await supabase.from('knowledge_chunks').insert(buf);
     if (error) {
@@ -104,19 +158,34 @@ async function main() {
     }
     console.log(`  已落盘 ${done}/${chunks.length}`);
   }
+  await reportCount();
+}
 
-  console.log('\n=== 建库完成 ===');
+async function reportCount() {
+  const supabase = createAdmin();
   const { count } = await supabase
     .from('knowledge_chunks')
     .select('*', { count: 'exact', head: true });
+  console.log('\n=== 建库完成 ===');
   console.log(`  knowledge_chunks 总行数：${count}`);
-  if ((count ?? 0) >= chunks.length) {
-    console.log('\n下一步：去 Supabase Dashboard → SQL Editor 执行 0002_rag_indexes.sql（建 ivfflat 索引 + match_knowledge RPC）');
-  }
+  console.log(
+    '\n下一步：去 Supabase Dashboard → SQL Editor 执行 0002_rag_indexes.sql（建 ivfflat 索引 + match_knowledge RPC）',
+  );
   process.exit(0);
 }
 
-main().catch((e) => {
-  console.error(e);
+dotenv.config({ path: '.env.local' });
+if (mode === 'load') {
+  loadMode().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+} else if (mode === 'incremental') {
+  incrementalMode().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+} else {
+  console.error(`未知模式: ${mode}（应为 load 或 incremental）`);
   process.exit(1);
-});
+}

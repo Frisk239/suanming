@@ -34,3 +34,6 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+scripts/data/
+scripts/_check-db.ts
+/models/
