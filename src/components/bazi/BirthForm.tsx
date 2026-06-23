@@ -32,6 +32,11 @@ interface Props {
 }
 
 export function BirthForm({ initial, onSubmit, loading }: Props) {
+  // 过滤 initial 里的 undefined —— 直接 ...initial 会让 undefined 覆盖默认值，
+  // 导致 input 受控/非受控切换警告 + padStart 等字符串方法在 undefined 上崩溃。
+  const overrides = Object.fromEntries(
+    Object.entries(initial ?? {}).filter(([, v]) => v !== undefined),
+  );
   const [form, setForm] = useState<BirthFormState>({
     name: '',
     gender: 'male',
@@ -44,7 +49,7 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
     city: '北京',
     useTrueSolar: true,
     sect: 1,
-    ...initial,
+    ...overrides,
   });
   const [error, setError] = useState('');
 
@@ -53,8 +58,8 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
 
   const submit = () => {
     setError('');
-    if (!form.year || !form.month || !form.day) {
-      setError('请填写完整出生日期');
+    if (!form.year || !form.month || !form.day || !form.hour || !form.minute) {
+      setError('请填写完整出生日期和时辰');
       return;
     }
     const input: ChartInput = {
