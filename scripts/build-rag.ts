@@ -1,10 +1,11 @@
 // scripts/build-rag.ts
 // 建库：把切片 + embedding 写入 Supabase knowledge_chunks。
 //
-// 两种模式（推荐 load,GPU 快）：
-//   npx tsx scripts/build-rag.ts            # 默认 = load 模式（读 Python GPU 生成的 embeddings.json）
-//   npx tsx scripts/build-rag.ts load       # 同上
-//   npx tsx scripts/build-rag.ts incremental# TS ONNX CPU 逐条 embed（慢,断点续跑,fallback）
+// 模式：
+//   npx tsx scripts/build-rag.ts                    # 默认 = load（读 embeddings.json）
+//   npx tsx scripts/build-rag.ts load               # 同上
+//   npx tsx scripts/build-rag.ts incremental        # 走微服务 embedBatch，断点续跑
+//   npx tsx scripts/build-rag.ts incremental-fresh  # 同上但先清空（强制重建，向量空间变了时用）
 //
 // GPU 路径(推荐):
 //   1. npx tsx scripts/export-chunks.ts        # 导出 chunks.json
@@ -85,9 +86,9 @@ async function loadMode() {
   await reportCount();
 }
 
-/** incremental 模式：TS ONNX CPU 逐条 embed，断点续跑（fallback，慢） */
-async function incrementalMode() {
-  console.log('=== incremental 模式（TS ONNX CPU，断点续跑）===');
+/** incremental 模式：走微服务 embedBatch，断点续跑。fresh=true 时强制清空重建。 */
+async function incrementalMode(fresh = false) {
+  console.log(`=== incremental 模式（微服务 embedBatch，${fresh ? '强制重建' : '断点续跑'}）===`);
   console.log('=== 1. 加载语料 ===');
   const docs = loadAllCorpus();
   console.log(`  原始文档：${docs.length}`);
@@ -102,11 +103,15 @@ async function incrementalMode() {
   const startIdx = existing ?? 0;
   console.log(`  已入库：${startIdx} 条`);
 
-  if (startIdx === 0) {
+  if (fresh) {
+    console.log('=== 3. fresh 模式，清空旧数据 ===');
+    await clearTable();
+  } else if (startIdx === 0) {
     console.log('=== 3. 首次建库，清空旧数据 ===');
     await clearTable();
   } else if (startIdx >= chunks.length) {
     console.log(`\n=== 已全部建库（${startIdx}/${chunks.length}），无需继续 ===`);
+    console.log('（如需强制重建：npx tsx scripts/build-rag.ts incremental-fresh）');
     process.exit(0);
   } else {
     console.log(`=== 3. 从断点续跑（跳过前 ${startIdx} 条）===`);
@@ -163,11 +168,16 @@ if (mode === 'load') {
     process.exit(1);
   });
 } else if (mode === 'incremental') {
-  incrementalMode().catch((e) => {
+  incrementalMode(false).catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+} else if (mode === 'incremental-fresh') {
+  incrementalMode(true).catch((e) => {
     console.error(e);
     process.exit(1);
   });
 } else {
-  console.error(`未知模式: ${mode}（应为 load 或 incremental）`);
+  console.error(`未知模式: ${mode}（应为 load / incremental / incremental-fresh）`);
   process.exit(1);
 }
