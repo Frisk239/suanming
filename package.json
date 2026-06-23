@@ -23,6 +23,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/ui": "^4.1.9",
+    "dotenv": "^17.4.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"
