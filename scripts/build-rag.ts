@@ -118,9 +118,11 @@ async function incrementalMode(fresh = false) {
   }
 
   // 批量 embed（每 EMBED_BATCH 条调一次微服务，替代逐条；微服务内部分批 encode）
+  // fresh 模式清空后从 0 开始（startIdx 是清空前读的旧值，已失效）
+  const startFrom = fresh ? 0 : startIdx;
   const EMBED_BATCH = 50;
-  let done = startIdx;
-  for (let i = startIdx; i < chunks.length; i += EMBED_BATCH) {
+  let done = startFrom;
+  for (let i = startFrom; i < chunks.length; i += EMBED_BATCH) {
     const slice = chunks.slice(i, Math.min(i + EMBED_BATCH, chunks.length));
     let embeddings: number[][];
     try {
