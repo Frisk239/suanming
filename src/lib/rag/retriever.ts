@@ -32,7 +32,11 @@ async function vectorSearch(queryText: string, topK: number): Promise<RetrievalR
   }));
 }
 
-/** ② 穷通宝鉴精确查询（按日主，chapter 含"论辛"等） */
+/**
+ * ② 穷通宝鉴精确查询（按日主）。
+ * 穷通宝鉴章节按天干分（论甲~论癸），月令调候在同章内按月罗列，
+ * 故精确命中只需按日干匹配 chapter（含"论辛"等）；月令由向量路+章内文本覆盖。
+ */
 async function exactLookup(query: RetrievalQuery, topK: number): Promise<RetrievalResult[]> {
   const supabase = createAdmin();
   const dayGanChapter = `论${query.dayMaster}`;
@@ -51,7 +55,8 @@ async function exactLookup(query: RetrievalQuery, topK: number): Promise<Retriev
 
 /** 把②层结果拼成自然语言 query（spec 4.4：非键值对，embedding 对自然语理解更好） */
 function buildQueryText(query: RetrievalQuery): string {
-  return `这是一个${query.patternName}的命盘，日主${query.dayMaster}${query.strengthLevel}，用神为${query.yongshenPrimary}`;
+  // 含月令，增强"生于午月"的调候语义（穷通宝鉴调候按月）
+  return `这是一个${query.patternName}的命盘，日主${query.dayMaster}${query.strengthLevel}生于${query.monthBranch}月，用神为${query.yongshenPrimary}`;
 }
 
 /** 双路检索 + 融合去重（精确优先，因为调候最相关） */
