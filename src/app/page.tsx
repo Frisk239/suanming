@@ -1,11 +1,7 @@
 // src/app/page.tsx
+// 首页：重定向到 /bazi（spec 5.2 页面结构，M4 暂不独立落地页）。
+import { redirect } from 'next/navigation';
+
 export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-3xl font-serif">青囊复刻 · 八字模块</h1>
-      <p className="mt-4 text-gray-600">
-        M1 完成：排盘 API 已就绪 → POST /api/bazi/chart
-      </p>
-    </main>
-  );
+  redirect('/bazi');
 }
