@@ -1,71 +1,42 @@
 // src/lib/rag/embedder.ts
-// 本地 BGE-M3 embedding（@huggingface/transformers v3）。
-// v3 起包名从 @xenova/transformers 更名为 @huggingface/transformers（API 兼容）。
-// 模型 repo 仍为 'Xenova/bge-m3'（HF Hub 上模型 id 未变，只是 npm 包改名）。
+// BGE-M3 embedding 的 HTTP 客户端。
 //
-// 首次运行自动下载模型权重 ~2GB 到缓存（需联网+磁盘+代理）。
-// 部署决策（spec 4.7）：开发用本地 M3，部署时实测 Vercel，跑不动则降级。
+// 实际推理在 Python 微服务（scripts/embed-server.py，FastAPI + GPU，本地常驻）。
+// 这样建库和查询用同一模型同一实现，向量空间完全一致
+// （之前 ONNX/PyTorch 不一致，余弦仅 0.775；统一后 >0.999）。
+//
+// 微服务地址由 EMBED_URL 配置（默认 http://127.0.0.1:8765）。
+// localhost 调用不走代理（不调 setupProxy）；靠 .env.local 的 NO_PROXY=localhost,127.0.0.1
+// 防止 undici 全局代理拦截。生产（Vercel）调 Railway 上的微服务，HTTPS_PROXY 留空。
 
-import { pipeline, env } from '@huggingface/transformers';
-import { setupProxy } from '@/lib/supabase/proxy';
-import fs from 'node:fs';
-import path from 'node:path';
+const EMBED_URL = process.env.EMBED_URL ?? 'http://127.0.0.1:8765';
 
-const MODEL_ID = 'Xenova/bge-m3';
-let extractor: any = null;
-
-// transformers.js v3 缓存目录（实测：node_modules/@huggingface/transformers/.cache）
-const CACHE_DIR = path.resolve(
-  process.cwd(),
-  'node_modules/@huggingface/transformers/.cache/Xenova/bge-m3',
-);
-
-/**
- * 探测模型是否已缓存。已缓存则纯本地加载（避免 transformers 去 HF 校验 etag
- * —— 本机经代理连 HF 不稳定，会卡住；这是 spec 4.7 部署风险的实测应对）。
- * 未缓存则允许远端拉取（首次下载，需代理）。
- */
-function configureModelSource() {
-  const onnxData = path.join(CACHE_DIR, 'onnx/model.onnx_data');
-  const onnxMeta = path.join(CACHE_DIR, 'onnx/model.onnx');
-  const cached = fs.existsSync(onnxData) && fs.existsSync(onnxMeta);
-  if (cached) {
-    env.allowLocalModels = true;
-    env.allowRemoteModels = false;
-    console.log('[embedder] 检测到本地缓存，纯离线加载');
-  } else {
-    env.allowLocalModels = false;
-    env.allowRemoteModels = true;
-    console.log('[embedder] 无本地缓存，将远端下载（~2GB，需代理）');
-  }
-}
-
-/** 懒加载 pipeline（首次调用下载模型 ~2GB） */
-async function getExtractor() {
-  if (!extractor) {
-    configureModelSource();
-    // 远端下载需走代理（本机翻墙连 HuggingFace；复用 M1 的 proxy.ts）
-    setupProxy();
-    console.log('[embedder] 加载 BGE-M3 模型，请稍候...');
-    extractor = await pipeline('feature-extraction', MODEL_ID);
-    console.log('[embedder] 模型加载完成');
-  }
-  return extractor;
-}
-
-/** 单条文本 → 1024 维向量（归一化） */
+/** 单条文本 → 1024 维归一化向量 */
 export async function embed(text: string): Promise<number[]> {
-  const ext = await getExtractor();
-  const output = await ext(text, { pooling: 'mean', normalize: true });
-  return Array.from(output.data as Float32Array);
+  const resp = await fetch(`${EMBED_URL}/embed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    throw new Error(`embed 服务返回 ${resp.status}: ${detail}`);
+  }
+  const data = (await resp.json()) as { embedding: number[] };
+  return data.embedding;
 }
 
-/** 批量 embedding（建库用；M3 逐条调，带进度日志） */
+/** 批量 embedding（建库用；微服务内部分批 encode 防 OOM） */
 export async function embedBatch(texts: string[]): Promise<number[][]> {
-  const results: number[][] = [];
-  for (let i = 0; i < texts.length; i++) {
-    results.push(await embed(texts[i]));
-    if ((i + 1) % 50 === 0) console.log(`[embedder] 进度 ${i + 1}/${texts.length}`);
+  const resp = await fetch(`${EMBED_URL}/embed-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    throw new Error(`embed-batch 服务返回 ${resp.status}: ${detail}`);
   }
-  return results;
+  const data = (await resp.json()) as { embeddings: number[][] };
+  return data.embeddings;
 }

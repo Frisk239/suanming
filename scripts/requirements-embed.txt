@@ -1,0 +1,6 @@
+# BGE-M3 embedding 微服务依赖
+# 安装：conda activate sk-learn && pip install -r scripts/requirements-embed.txt
+# 注：torch 已在 sk-learn 环境（torch 2.11+cu128），不在此重复固定版本
+fastapi>=0.115
+uvicorn[standard]>=0.32
+FlagEmbedding>=1.3

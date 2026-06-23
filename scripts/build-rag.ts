@@ -17,7 +17,7 @@
 
 import { loadAllCorpus } from '../src/lib/rag/corpus-loader';
 import { chunkAll } from '../src/lib/rag/chunker';
-import { embed } from '../src/lib/rag/embedder';
+import { embedBatch } from '../src/lib/rag/embedder';
 import { createAdmin } from '../src/lib/supabase/admin';
 import dotenv from 'dotenv';
 import fs from 'node:fs';
@@ -112,50 +112,32 @@ async function incrementalMode() {
     console.log(`=== 3. 从断点续跑（跳过前 ${startIdx} 条）===`);
   }
 
-  const WRITE_EVERY = 20;
-  let buf: Array<{
-    book: string;
-    chapter: string;
-    category: string;
-    content: string;
-    translation: string | null;
-    embedding: number[];
-  }> = [];
+  // 批量 embed（每 EMBED_BATCH 条调一次微服务，替代逐条；微服务内部分批 encode）
+  const EMBED_BATCH = 50;
   let done = startIdx;
-  for (let i = startIdx; i < chunks.length; i++) {
-    const c = chunks[i];
-    let embedding: number[];
+  for (let i = startIdx; i < chunks.length; i += EMBED_BATCH) {
+    const slice = chunks.slice(i, Math.min(i + EMBED_BATCH, chunks.length));
+    let embeddings: number[][];
     try {
-      embedding = await embed(c.content);
+      embeddings = await embedBatch(slice.map((c) => c.content));
     } catch (e) {
-      console.error(`\nembed 失败 (#${i + 1} 《${c.book}·${c.chapter}》):`, e);
+      console.error(`\nembed 失败 (#${i + 1}-${i + slice.length}):`, e);
       process.exit(1);
     }
-    buf.push({
+    const rows = slice.map((c, j) => ({
       book: c.book,
       chapter: c.chapter,
       category: c.category,
       content: c.content,
       translation: c.translation ?? null,
-      embedding,
-    });
-    done = i + 1;
-    if (buf.length >= WRITE_EVERY) {
-      const { error } = await supabase.from('knowledge_chunks').insert(buf);
-      if (error) {
-        console.error(`\n插入失败（#${done}）:`, error);
-        process.exit(1);
-      }
-      buf = [];
-      console.log(`  已落盘 ${done}/${chunks.length}`);
-    }
-  }
-  if (buf.length > 0) {
-    const { error } = await supabase.from('knowledge_chunks').insert(buf);
+      embedding: embeddings[j],
+    }));
+    const { error } = await supabase.from('knowledge_chunks').insert(rows);
     if (error) {
-      console.error('插入尾巴失败:', error);
+      console.error(`\n插入失败（#${i + slice.length}）:`, error);
       process.exit(1);
     }
+    done = i + slice.length;
     console.log(`  已落盘 ${done}/${chunks.length}`);
   }
   await reportCount();
