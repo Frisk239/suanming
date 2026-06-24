@@ -16,6 +16,8 @@ import { useState } from 'react';
 import { MODULES } from '@/config/modules';
 import { InkSea } from '@/components/home/InkSea';
 import { GlyphField } from '@/components/home/GlyphField';
+import { TopNav } from '@/components/shell/TopNav';
+import { BottomNav } from '@/components/shell/BottomNav';
 
 type Persona = 'scholar' | 'hermit';
 type Depth = 'standard' | 'popular';
@@ -48,7 +50,9 @@ export default function Home() {
   const [depth, setDepth] = useState<Depth>('standard');
 
   return (
-    <main className="flex flex-col">
+    <>
+    <TopNav />
+    <main className="flex flex-col pb-16 sm:pb-0">
       {/* ===== S0 HERO：宣纸→黛青渐变 + 波浪横跨分界 ===== */}
       <section
         className="relative min-h-[88vh] flex flex-col items-center justify-center px-6 py-16 text-center overflow-hidden"
@@ -244,5 +248,7 @@ export default function Home() {
         </div>
       </footer>
     </main>
+    <BottomNav />
+    </>
   );
 }

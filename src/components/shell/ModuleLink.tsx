@@ -30,7 +30,7 @@ export function ModuleLink({
       href={href}
       onClick={onClick}
       className={`group relative px-1 py-1.5 text-sm tracking-wide transition-colors ${
-        active ? 'text-xuan-zhi' : 'text-xuan-zhi/60 hover:text-xuan-zhi/90'
+        active ? 'text-dai-qing' : 'text-dai-qing/65 hover:text-dai-qing-light'
       }`}
     >
       {module.label}

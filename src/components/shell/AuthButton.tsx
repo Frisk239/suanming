@@ -16,7 +16,7 @@ export function AuthButton() {
     return (
       <Link
         href="/account"
-        className="text-[13px] px-3.5 py-1.5 rounded-md border border-dai-qing-light/40 text-xuan-zhi/80 hover:border-hu-po-jin hover:text-hu-po-jin transition-colors truncate max-w-[12rem]"
+        className="text-[13px] px-3.5 py-1.5 rounded-md border border-dai-qing-light/40 text-dai-qing/75 hover:border-hu-po-jin hover:text-hu-po-jin transition-colors truncate max-w-[12rem]"
         title={user.email}
       >
         {user.email}

@@ -20,13 +20,13 @@ import { AuthButton } from '@/components/shell/AuthButton';
 
 export function TopNav() {
   return (
-    <header className="sticky top-0 z-50 hidden sm:flex items-center justify-between px-6 h-14 border-b border-xuan-zhi/[0.06] bg-dai-qing-dark/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 hidden sm:flex items-center justify-between px-6 h-14 border-b border-dai-qing/[0.05] bg-xuan-zhi-warm/85 backdrop-blur-xl">
       {/* 品牌：青囊 glow-breathe 金光呼吸（drop-shadow 8px↔24px 循环） */}
       <Link href="/" className="flex items-baseline gap-2">
         <span className="qn-glow-breathe font-serif text-2xl font-bold text-hu-po-jin">
           青囊
         </span>
-        <span className="text-[13px] text-xuan-zhi/55 tracking-wide">
+        <span className="text-[13px] text-dai-qing/60 tracking-wide">
           Aether Pouch
         </span>
       </Link>

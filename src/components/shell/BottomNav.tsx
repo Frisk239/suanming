@@ -23,7 +23,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 flex items-stretch h-14 border-t border-xuan-zhi/[0.06] bg-dai-qing-dark/95 backdrop-blur-xl">
+    <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 flex items-stretch h-14 border-t border-dai-qing/[0.05] bg-xuan-zhi-warm/95 backdrop-blur-xl">
       {items.map((it) => {
         const active = pathname === it.href;
         return (
@@ -31,7 +31,7 @@ export function BottomNav() {
             key={it.id}
             href={it.href}
             className={`flex-1 flex flex-col items-center justify-center text-xs transition-colors ${
-              active ? 'text-hu-po-jin' : 'text-xuan-zhi/50'
+              active ? 'text-hu-po-jin' : 'text-dai-qing/55'
             }`}
           >
             {it.label}
