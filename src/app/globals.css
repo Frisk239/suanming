@@ -24,7 +24,7 @@
   --color-hu-po-jin-light: #e8c84a;/* 浅鎏金 rgb(232,200,74) hover */
 
   /* 文字玄纸系 */
-  --color-xuan-zhi-dark: #1c2225;
+  --color-xuan-zhi-dark: #f4f1e8; /* 玄纸暗（比 xuan-zhi 略暗的米黄，非黑色。原型实测） */
   --color-xuan-zhi: #fbfaf5;       /* 玄纸 rgb(251,250,245) 深底主文字（暖白）★ */
   --color-xuan-zhi-warm: #f5f5dc;  /* 玄纸暖 rgb(245,245,220) 排盘页浅底 */
   --color-xuan-zhi-light: #f4f1e8;
