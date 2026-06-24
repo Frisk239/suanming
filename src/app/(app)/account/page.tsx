@@ -10,8 +10,8 @@
 import Link from 'next/link';
 import { getSession } from '@/lib/supabase/session';
 import { createServerClient } from '@/lib/supabase/server';
-import { signOut } from './actions';
 import { ChangePasswordCard } from './ChangePasswordCard';
+import { SignOutButton } from './SignOutButton';
 
 /** section 标题：中文衬线 + 英文小字副标题（青囊实测样式） */
 function SectionTitle({ zh, en }: { zh: string; en: string }) {
@@ -106,15 +106,9 @@ export default async function AccountPage() {
             <div className="border-t border-dai-qing/10">
               <ChangePasswordCard />
             </div>
-            <form action={signOut} className="border-t border-dai-qing/10">
-              <button
-                type="submit"
-                className="w-full flex items-center justify-between py-2 text-sm text-dai-qing/70 hover:text-vermillion transition-colors"
-              >
-                <span className="font-serif tracking-wide">退 出 登 录</span>
-                <span className="text-[11px] text-dai-qing/40">清除本机会话</span>
-              </button>
-            </form>
+            <div className="border-t border-dai-qing/10">
+              <SignOutButton />
+            </div>
           </div>
         </section>
 
