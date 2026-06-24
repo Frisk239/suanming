@@ -19,26 +19,26 @@ export function ChartBoard({ chart }: Props) {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-ink-100 p-6">
+    <div className="bg-xuan-zhi rounded-lg shadow-sm border border-dai-qing/15 p-6">
       {/* 头部（spec 5.5：乾造/坤造 · 城市 · 真太阳时 · 公历 · 农历） */}
-      <div className="text-center mb-4 pb-4 border-b border-ink-100">
-        <h2 className="font-serif-display text-xl text-ink-900 tracking-widest">
+      <div className="text-center mb-4 pb-4 border-b border-dai-qing/15">
+        <h2 className="font-serif-display text-xl text-dai-qing-dark tracking-widest">
           {chart.gender === 'male' ? '乾造' : '坤造'}
           {chart.city ? ` · ${chart.city}` : ''}
         </h2>
-        <p className="text-sm text-ink-500 mt-1">
+        <p className="text-sm text-dai-qing/60 mt-1">
           公历 {chart.solarDate}
           {chart.trueSolarTime ? ` · 真太阳时 ${chart.trueSolarTime}` : ''}
         </p>
         {chart.lunarDate && (
-          <p className="text-sm text-ink-500">农历 {chart.lunarDate}</p>
+          <p className="text-sm text-dai-qing/60">农历 {chart.lunarDate}</p>
         )}
       </div>
 
       {/* 四柱表（行展开式，spec 5.5） */}
       <table className="w-full text-center border-collapse">
         <thead>
-          <tr className="text-sm text-ink-500">
+          <tr className="text-sm text-dai-qing/60">
             <th className="w-16"></th>
             {pillars.map(({ label, isDay }) => (
               <th
@@ -55,7 +55,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 天干（衬线大字） */}
           <Row label="天干" big>
             {pillars.map(({ label, p, isDay }) => (
-              <td key={label} className={`py-2 ${isDay ? 'text-accent' : 'text-ink-900'}`}>
+              <td key={label} className={`py-2 ${isDay ? 'text-accent' : 'text-dai-qing-dark'}`}>
                 {p.gan}
               </td>
             ))}
@@ -63,7 +63,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 主星 = 天干十神 */}
           <Row label="主星">
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-500">
+              <td key={label} className="text-dai-qing/60">
                 {p.shiShenGan}
               </td>
             ))}
@@ -71,7 +71,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 地支（衬线大字） */}
           <Row label="地支" big>
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-900">
+              <td key={label} className="text-dai-qing-dark">
                 {p.zhi}
               </td>
             ))}
@@ -79,7 +79,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 副星 = 地支藏干十神 */}
           <Row label="副星">
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-500">
+              <td key={label} className="text-dai-qing/60">
                 {p.shiShenZhi.join(' ')}
               </td>
             ))}
@@ -87,7 +87,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 藏干 */}
           <Row label="藏干">
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-500">
+              <td key={label} className="text-dai-qing/60">
                 {p.hideGan.join(' ')}
               </td>
             ))}
@@ -103,7 +103,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 空亡（单值 string，可能为空） */}
           <Row label="空亡">
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-300">
+              <td key={label} className="text-dai-qing/40">
                 {p.kongWang || '—'}
               </td>
             ))}
@@ -111,7 +111,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 地势 = 日主对地支十二长生 */}
           <Row label="地势">
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-500">
+              <td key={label} className="text-dai-qing/60">
                 {p.diShi}
               </td>
             ))}
@@ -119,7 +119,7 @@ export function ChartBoard({ chart }: Props) {
           {/* 神煞（数组，对齐青囊排盘明细） */}
           <Row label="神煞">
             {pillars.map(({ label, p }) => (
-              <td key={label} className="text-ink-300 text-xs">
+              <td key={label} className="text-dai-qing/40 text-xs">
                 {p.shenSha.length ? p.shenSha.join(' ') : '—'}
               </td>
             ))}
@@ -141,8 +141,8 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <tr className={`border-t border-ink-100 ${big ? 'font-serif-display text-2xl' : 'text-sm'}`}>
-      <td className="text-left text-ink-500 pr-2 whitespace-nowrap">{label}</td>
+    <tr className={`border-t border-dai-qing/15 ${big ? 'font-serif-display text-2xl' : 'text-sm'}`}>
+      <td className="text-left text-dai-qing/60 pr-2 whitespace-nowrap">{label}</td>
       {children}
     </tr>
   );

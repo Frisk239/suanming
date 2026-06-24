@@ -17,23 +17,23 @@ export function AnalysisPanel({ analysis }: Props) {
   return (
     <div className="space-y-4">
       {/* 日主气数（滴天髓三得：得令/得地/得势，spec 5.5） */}
-      <div className="bg-white rounded-lg shadow-sm border border-ink-100 p-6">
-        <h3 className="font-serif-display text-lg text-ink-900 mb-3 tracking-widest">
+      <div className="bg-xuan-zhi rounded-lg shadow-sm border border-dai-qing/15 p-6">
+        <h3 className="font-serif-display text-lg text-dai-qing-dark mb-3 tracking-widest">
           日主气数
         </h3>
         <div className="flex items-baseline gap-6">
           <div>
-            <span className="text-sm text-ink-500">强弱</span>
-            <span className="ml-2 font-serif-display text-xl text-ink-900">
+            <span className="text-sm text-dai-qing/60">强弱</span>
+            <span className="ml-2 font-serif-display text-xl text-dai-qing-dark">
               {strength.level}
             </span>
           </div>
           <div>
-            <span className="text-sm text-ink-500">综合分</span>
-            <span className="ml-2 text-ink-700 font-semibold">{strength.score}</span>
+            <span className="text-sm text-dai-qing/60">综合分</span>
+            <span className="ml-2 text-dai-qing font-semibold">{strength.score}</span>
           </div>
         </div>
-        <div className="mt-3 flex gap-4 text-xs text-ink-500">
+        <div className="mt-3 flex gap-4 text-xs text-dai-qing/60">
           <span>
             得令 {strength.deLingBool ? '✓' : '✗'}{' '}
             <span className={strength.deLingBool ? 'text-accent' : 'text-wx-huo'}>
@@ -56,26 +56,26 @@ export function AnalysisPanel({ analysis }: Props) {
       </div>
 
       {/* 命局解读：格局 + 用神喜忌（spec 5.5） */}
-      <div className="bg-white rounded-lg shadow-sm border border-ink-100 p-6">
-        <h3 className="font-serif-display text-lg text-ink-900 mb-3 tracking-widest">
+      <div className="bg-xuan-zhi rounded-lg shadow-sm border border-dai-qing/15 p-6">
+        <h3 className="font-serif-display text-lg text-dai-qing-dark mb-3 tracking-widest">
           命局解读
         </h3>
         <div className="space-y-2 text-sm">
           <div>
-            <span className="text-ink-500">格局：</span>
-            <span className="font-serif-display text-ink-900">{pattern.name}</span>
-            <span className="text-xs text-ink-500 ml-2">{pattern.basis}</span>
+            <span className="text-dai-qing/60">格局：</span>
+            <span className="font-serif-display text-dai-qing-dark">{pattern.name}</span>
+            <span className="text-xs text-dai-qing/60 ml-2">{pattern.basis}</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-ink-500">用神：</span>
+            <span className="text-dai-qing/60">用神：</span>
             <WuxingBadge wx={yongshen.primary} />
-            <span className="text-ink-500 ml-2">喜：</span>
+            <span className="text-dai-qing/60 ml-2">喜：</span>
             {yongshen.favor.map((w) => (
               <WuxingBadge key={w} wx={w}>
                 {w}
               </WuxingBadge>
             ))}
-            <span className="text-ink-500 ml-2">忌：</span>
+            <span className="text-dai-qing/60 ml-2">忌：</span>
             {yongshen.avoid.map((w) => (
               <WuxingBadge key={w} wx={w}>
                 {w}
@@ -83,7 +83,7 @@ export function AnalysisPanel({ analysis }: Props) {
             ))}
           </div>
           {yongshen.advice && (
-            <p className="text-xs text-ink-300 pt-1">{yongshen.advice}</p>
+            <p className="text-xs text-dai-qing/40 pt-1">{yongshen.advice}</p>
           )}
         </div>
       </div>

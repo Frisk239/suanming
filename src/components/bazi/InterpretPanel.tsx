@@ -28,7 +28,7 @@ const SEGMENTS = [
 
 // 结论段内 ### 三级主题的颜色点缀（让五个主题卡片有区分度）
 const SUB_THEME_STYLE: Record<string, string> = {
-  事业: 'border-ink-300',
+  事业: 'border-dai-qing-light',
   财运: 'border-wx-tu',
   婚姻感情: 'border-wx-huo',
   健康: 'border-wx-mu',
@@ -99,9 +99,9 @@ function splitSubthemes(body: string): { tag: string; body: string }[] {
 }
 
 const SEG_STYLE: Record<string, string> = {
-  依据: 'border-accent',
-  推演: 'border-ink-300',
-  结论: 'border-accent-deep',
+  依据: 'border-hu-po-jin',
+  推演: 'border-dai-qing-light',
+  结论: 'border-hu-po-jin-dark',
   边界: 'border-wx-huo',
 };
 
@@ -115,7 +115,7 @@ function RichText({ text }: { text: string }) {
     <>
       {parts.map((p, i) =>
         i % 2 === 1 ? (
-          <strong key={i} className="font-semibold text-ink-900">
+          <strong key={i} className="font-semibold text-dai-qing-dark">
             {p}
           </strong>
         ) : (
@@ -175,9 +175,9 @@ export function InterpretPanel({ input }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-dai-qing-light/30 bg-dai-qing-dark/60 backdrop-blur p-6">
+    <div className="rounded-lg border border-dai-qing/15 bg-xuan-zhi shadow-sm p-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h3 className="font-serif-display text-lg text-ink-900 tracking-widest">
+        <h3 className="font-serif-display text-lg text-dai-qing-dark tracking-widest">
           AI 详批
         </h3>
         <div className="flex gap-2 text-sm">
@@ -207,7 +207,7 @@ export function InterpretPanel({ input }: Props) {
       {!started && (
         <button
           onClick={begin}
-          className="w-full py-2 bg-accent text-white rounded font-serif-display tracking-widest hover:bg-accent-deep transition-colors"
+          className="qn-sheen-sweep relative overflow-hidden w-full py-2 bg-hu-po-jin text-dai-qing-dark rounded font-serif-display tracking-widest hover:bg-hu-po-jin-light transition-colors"
         >
           开始 AI 详批
         </button>
@@ -217,18 +217,18 @@ export function InterpretPanel({ input }: Props) {
         <>
           <div className="flex items-center gap-3 mb-3">
             {streaming ? (
-              <button onClick={stop} className="text-sm text-ink-500 hover:text-ink-700">
+              <button onClick={stop} className="text-sm text-dai-qing/60 hover:text-dai-qing">
                 ■ 停止生成
               </button>
             ) : (
               <button
                 onClick={() => start(input, options)}
-                className="text-sm text-accent hover:text-accent-deep"
+                className="text-sm text-hu-po-jin hover:text-hu-po-jin-dark"
               >
                 ↻ 重新生成
               </button>
             )}
-            <button onClick={reset} className="text-sm text-ink-300 hover:text-ink-500">
+            <button onClick={reset} className="text-sm text-dai-qing/40 hover:text-dai-qing/70">
               清空
             </button>
           </div>
@@ -248,7 +248,7 @@ export function InterpretPanel({ input }: Props) {
               if (!seg.tag || !meta) {
                 if (!seg.body) return null;
                 return (
-                  <p key={i} className="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">
+                  <p key={i} className="text-sm text-dai-qing whitespace-pre-wrap leading-relaxed">
                     <RichText text={seg.body} />
                   </p>
                 );
@@ -257,8 +257,8 @@ export function InterpretPanel({ input }: Props) {
               if (seg.tag === '结论' && seg.sub && seg.sub.length > 0) {
                 return (
                   <div key={i} className={`border-l-2 pl-3 ${SEG_STYLE[seg.tag] ?? ''}`}>
-                    <div className="font-serif-display text-ink-900 text-sm">{meta.label}</div>
-                    <div className="text-xs text-ink-300 mb-2">{meta.desc}</div>
+                    <div className="font-serif-display text-dai-qing-dark text-sm">{meta.label}</div>
+                    <div className="text-xs text-dai-qing/50 mb-2">{meta.desc}</div>
                     <div className="space-y-3">
                       {seg.sub.map((sub, si) => {
                         const isLastSub = isLast && si === seg.sub!.length - 1;
@@ -266,18 +266,18 @@ export function InterpretPanel({ input }: Props) {
                         return (
                           <div
                             key={si}
-                            className={`pl-2 ${hasTag ? `border-l-2 ${SUB_THEME_STYLE[sub.tag] ?? 'border-ink-200'}` : ''}`}
+                            className={`pl-2 ${hasTag ? `border-l-2 ${SUB_THEME_STYLE[sub.tag] ?? 'border-dai-qing-light'}` : ''}`}
                           >
                             {hasTag && (
-                              <div className="font-serif-display text-ink-900 text-sm mb-0.5">
+                              <div className="font-serif-display text-dai-qing-dark text-sm mb-0.5">
                                 {sub.tag}
                               </div>
                             )}
-                            <p className="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">
+                            <p className="text-sm text-dai-qing whitespace-pre-wrap leading-relaxed">
                               <RichText text={sub.body} />
                               {/* 流式中：最后一个子段末尾显示光标 */}
                               {streaming && isLastSub && (
-                                <span className="animate-pulse text-accent">▌</span>
+                                <span className="animate-pulse text-hu-po-jin">▌</span>
                               )}
                             </p>
                           </div>
@@ -290,13 +290,13 @@ export function InterpretPanel({ input }: Props) {
               // 依据/推演/边界（普通段，无子主题）
               return (
                 <div key={i} className={`border-l-2 pl-3 ${SEG_STYLE[seg.tag] ?? ''}`}>
-                  <div className="font-serif-display text-ink-900 text-sm">{meta.label}</div>
-                  <div className="text-xs text-ink-300 mb-1">{meta.desc}</div>
-                  <p className="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="font-serif-display text-dai-qing-dark text-sm">{meta.label}</div>
+                  <div className="text-xs text-dai-qing/50 mb-1">{meta.desc}</div>
+                  <p className="text-sm text-dai-qing whitespace-pre-wrap leading-relaxed">
                     <RichText text={seg.body} />
                     {/* 末段流式中显示光标 */}
                     {streaming && isLast && (
-                      <span className="animate-pulse text-accent">▌</span>
+                      <span className="animate-pulse text-hu-po-jin">▌</span>
                     )}
                   </p>
                 </div>
@@ -304,7 +304,7 @@ export function InterpretPanel({ input }: Props) {
             })}
             {/* 完全空内容时（刚开始）显示等待 */}
             {!content && streaming && !error && (
-              <p className="text-sm text-ink-300">正在检索古籍、组织详批…</p>
+              <p className="text-sm text-dai-qing/40">正在检索古籍、组织详批…</p>
             )}
           </div>
         </>

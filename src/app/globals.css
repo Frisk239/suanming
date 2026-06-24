@@ -268,6 +268,20 @@ body {
   animation: lamp-pulse 2.4s ease-in-out infinite;
 }
 
+/* 年月日时下拉（11-bazi.html date-cell select）：透明底居中黛青粗体 */
+.qn-date-select {
+  background: transparent;
+  border: 0;
+  outline: none;
+  width: 100%;
+  text-align: center;
+  color: #004d4d;
+  font-weight: bold;
+  font-size: 14px;
+  appearance: none;
+  cursor: pointer;
+}
+
 /*
  * 表单复用组件类（spec 5.5）。Tailwind v4 用 @layer components + @apply。
  * 华彩深底适配：input 用深墨底 + 玄纸字，seg-btn 同理。

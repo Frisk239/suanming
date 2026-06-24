@@ -8,7 +8,7 @@ type Dayun = BaziAnalysisResult['daYuns'][number];
 
 const TIER_STYLE: Record<Dayun['assessment']['tier'], string> = {
   good: 'bg-accent/10 text-accent border-accent/40',
-  neutral: 'bg-ink-100 text-ink-500 border-ink-200',
+  neutral: 'bg-dai-qing/10 text-dai-qing/70 border-dai-qing/30',
   bad: 'bg-wx-huo/10 text-wx-huo border-wx-huo/40',
 };
 const TIER_LABEL: Record<Dayun['assessment']['tier'], string> = {
@@ -23,7 +23,7 @@ interface Props {
 
 export function DayunList({ daYuns }: Props) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-ink-100 p-6">
+    <div className="bg-xuan-zhi rounded-lg shadow-sm border border-dai-qing/15 p-6">
       <h3 className="font-serif-display text-lg text-ink-900 mb-3 tracking-widest">
         大运 · 流年
       </h3>
@@ -31,7 +31,7 @@ export function DayunList({ daYuns }: Props) {
         {daYuns.map((dy) => (
           <div
             key={`${dy.ganZhi}-${dy.startAge}`}
-            className="border border-ink-100 rounded p-2 text-center"
+            className="border border-dai-qing/15 rounded p-2 text-center"
           >
             <div className="font-serif-display text-xl text-ink-900">{dy.ganZhi}</div>
             <div className="text-xs text-ink-500 mt-0.5">

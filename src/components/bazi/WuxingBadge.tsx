@@ -22,6 +22,6 @@ interface Props {
 
 export function WuxingBadge({ wx, children }: Props) {
   const first = (wx[0] ?? '') as WuXing;
-  const colorCls = WX_TEXT[first] ?? 'text-ink-500';
+  const colorCls = WX_TEXT[first] ?? 'text-dai-qing/60';
   return <span className={`font-semibold ${colorCls}`}>{children ?? wx}</span>;
 }

@@ -15,13 +15,14 @@ import { BirthForm } from '@/components/bazi/BirthForm';
 import { ChartBoard } from '@/components/bazi/ChartBoard';
 import { AnalysisPanel } from '@/components/bazi/AnalysisPanel';
 import { InterpretPanel } from '@/components/bazi/InterpretPanel';
+import { GlyphField } from '@/components/home/GlyphField';
 import { fetchAnalysis } from '@/lib/client/api';
 import type { ChartInput } from '@/types/bazi';
 import type { ChartState, BirthFormState } from '@/types/ui';
 
 export default function BaziPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen" />}>
+    <Suspense fallback={<main className="min-h-screen bg-xuan-zhi-warm" />}>
       <BaziPageContent />
     </Suspense>
   );
@@ -78,24 +79,29 @@ function BaziPageContent() {
   };
 
   return (
-    <main className="min-h-screen py-8 px-4">
-      <div className="max-w-2xl mx-auto space-y-4">
-        {/* 录入（始终展示，便于改参数重排，spec 5.6） */}
-        <BirthForm initial={initialForm} onSubmit={handleSubmit} loading={loading} />
-        {error && (
-          <p className="text-wx-huo text-sm text-center bg-wx-huo/5 rounded py-2">
-            ⚠ {error}
-          </p>
-        )}
+    // 排盘页玄纸暖底（11-bazi.html 实测 #f5f5dc）+ 稀疏黛青浮字
+    <main className="relative min-h-screen bg-xuan-zhi-warm overflow-hidden">
+      <GlyphField variant="ink" cols={5} rows={8} density={0.4} />
 
-        {/* 排盘结果 */}
-        {chartState && (
-          <>
-            <ChartBoard chart={chartState.chart} />
-            <AnalysisPanel analysis={chartState.analysis} />
-            {lastInput && <InterpretPanel input={lastInput} />}
-          </>
-        )}
+      <div className="relative z-[2] py-8 px-4">
+        <div className="space-y-4">
+          {/* 录入（始终展示，便于改参数重排，spec 5.6） */}
+          <BirthForm initial={initialForm} onSubmit={handleSubmit} loading={loading} />
+          {error && (
+            <p className="text-vermillion text-sm text-center bg-vermillion/5 rounded py-2">
+              ⚠ {error}
+            </p>
+          )}
+
+          {/* 排盘结果 */}
+          {chartState && (
+            <>
+              <ChartBoard chart={chartState.chart} />
+              <AnalysisPanel analysis={chartState.analysis} />
+              {lastInput && <InterpretPanel input={lastInput} />}
+            </>
+          )}
+        </div>
       </div>
     </main>
   );

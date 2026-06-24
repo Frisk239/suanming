@@ -1,6 +1,13 @@
 // src/components/bazi/BirthForm.tsx
-// 录入表单（spec 5.5）。原生控件 + Tailwind，对齐青囊字段。
-// 借鉴 mingyu InputPage.PersonForm：性别按钮组、年月日 select、时辰选择、真太阳时切换。
+// 录入表单（spec 5.5，11-bazi.html 深度复刻）。
+//
+// 逻辑保留 M4（initial 过滤、表单状态、submit 组装 ChartInput、时辰名实时显示），
+// UI 换成华彩招牌：
+//   - 双层框卡片（外黛青边 + 内琥珀金细边 inset 7px）
+//   - 深色黛青渐变头部「青囊·庚帖 八字排盘」流光大字 + 朱砂印章悬浮右上
+//   - qn-inkline 墨线下划线输入 + 乾坤定性滑块 + 光泽扫过提交按钮
+//
+// 表单结构按后端实际需要（gender/solarDate/city/useTrueSolar/sect），原型是参考。
 
 'use client';
 
@@ -15,10 +22,8 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
 // 12 时辰名（子丑寅卯辰巳午未申酉戌亥），每个时辰跨 2 小时，子时跨日界。
-// 23:00-00:59 子，01-02 丑，03-04 寅，依此类推。spec 5.5「实时显示时辰名」。
 const ZHI_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 function hourToZhi(hour: number): string {
-  // 23-24 和 0 都属子时（跨日）；其余 hour 为奇数时辰取 (hour+1)/2
   if (hour === 23 || hour === 0) return '子';
   return ZHI_NAMES[Math.floor((hour + 1) / 2)];
 }
@@ -52,6 +57,7 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
     ...overrides,
   });
   const [error, setError] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const set = <K extends keyof BirthFormState>(k: K, v: BirthFormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -70,8 +76,6 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
         '0',
       )} ${form.hour.padStart(2, '0')}:${form.minute.padStart(2, '0')}`,
       isLunar: form.isLunar,
-      // 城市名：后端经 bazi-core cityCache 查经纬度。
-      // 开发机若有中文编码问题可改传 longitude（M1 经验，前端 fetch UTF-8 一般无此问题）。
       city: form.city,
       useTrueSolar: form.useTrueSolar,
       sect: form.sect,
@@ -83,161 +87,269 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
   const zhiName = isNaN(hourNum) ? '' : `${hourToZhi(hourNum)}时`;
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-sm border border-ink-100 p-6 space-y-4">
-      <h1 className="font-serif-display text-2xl text-ink-900 text-center tracking-[0.3em]">
-        八 字 排 盘
-      </h1>
+    <div className="relative w-full max-w-2xl mx-auto">
+      {/* 双层框排盘卡片 */}
+      <div className="chart-card relative w-full rounded-md border border-dai-qing/15 shadow-[0_24px_60px_-20px_rgba(0,51,51,0.28)] bg-xuan-zhi overflow-hidden">
+        {/* ★ 内层琥珀金细边（inset 7px，11-bazi.html 实测） */}
+        <span className="pointer-events-none absolute inset-[7px] z-20 rounded border border-hu-po-jin/25" />
 
-      {/* 称谓 */}
-      <Field label="称谓">
-        <input
-          className="input"
-          value={form.name}
-          onChange={(e) => set('name', e.target.value)}
-          placeholder="（可选）如：己身"
-        />
-      </Field>
-
-      {/* 性别（按钮组，对齐青囊「男(乾造)/女(坤造)」） */}
-      <Field label="性别">
-        <div className="flex gap-2">
-          {(['male', 'female'] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => set('gender', g)}
-              className={`seg-btn ${form.gender === g ? 'seg-btn-active' : ''}`}
-            >
-              {g === 'male' ? '男（乾造）' : '女（坤造）'}
-            </button>
-          ))}
+        {/* 深色头部（黛青渐变 + 流光标题） */}
+        <div className="relative overflow-hidden bg-gradient-to-b from-dai-qing-dark to-dai-qing px-8 py-9 text-center">
+          <div className="flex items-center justify-center gap-3 text-[10px] tracking-[0.4em] text-hu-po-jin/60">
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-hu-po-jin/45" />
+            <span>青 囊 · 庚 帖</span>
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-hu-po-jin/45" />
+          </div>
+          <h1 className="mt-4 flex justify-center gap-0 font-serif font-bold text-[clamp(34px,5vw,46px)]">
+            {['八', '字', '排', '盘'].map((ch) => (
+              <span key={ch} className="qn-glow-breathe text-hu-po-jin">
+                {ch}
+              </span>
+            ))}
+          </h1>
+          <p className="mt-3 font-serif text-sm text-xuan-zhi/55 leading-relaxed">
+            天道有常，缘者自寻。录入诞辰，共振星寰。
+          </p>
         </div>
-      </Field>
 
-      {/* 出生日期（公历下拉，spec 5.5） */}
-      <Field label="出生日期">
-        <div className="flex gap-2 items-center">
-          <select
-            className="input"
-            value={form.year}
-            onChange={(e) => set('year', e.target.value)}
-          >
-            <option value="">年</option>
-            {YEARS.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input"
-            value={form.month}
-            onChange={(e) => set('month', e.target.value)}
-          >
-            <option value="">月</option>
-            {MONTHS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input"
-            value={form.day}
-            onChange={(e) => set('day', e.target.value)}
-          >
-            <option value="">日</option>
-            {DAYS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Field>
-
-      {/* 时辰（HH:MM，实时显示时辰名，spec 5.5） */}
-      <Field label={`时辰${zhiName ? `（${zhiName}）` : ''}`}>
-        <div className="flex gap-2 items-center">
-          <select
-            className="input"
-            value={form.hour}
-            onChange={(e) => set('hour', e.target.value)}
-          >
-            {HOURS.map((h) => (
-              <option key={h} value={h}>
-                {String(h).padStart(2, '0')}
-              </option>
-            ))}
-          </select>
-          <span className="text-ink-500">:</span>
-          <select
-            className="input"
-            value={form.minute}
-            onChange={(e) => set('minute', e.target.value)}
-          >
-            {MINUTES.map((m) => (
-              <option key={m} value={m}>
-                {String(m).padStart(2, '0')}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Field>
-
-      {/* 出生地（文本，M5 加省市级联，spec 5.5） */}
-      <Field label="出生地">
-        <input
-          className="input"
-          value={form.city}
-          onChange={(e) => set('city', e.target.value)}
-          placeholder="如：北京"
-        />
-      </Field>
-
-      {/* 高级选项（折叠：真太阳时 / 子时流派，spec 5.5） */}
-      <details className="text-sm text-ink-500">
-        <summary className="cursor-pointer">高级排盘选项</summary>
-        <div className="mt-2 space-y-2 pl-1">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.useTrueSolar}
-              onChange={(e) => set('useTrueSolar', e.target.checked)}
+        {/* 表单区（玄纸底） */}
+        <div className="px-10 py-10 space-y-8 bg-xuan-zhi">
+          {/* 称谓 */}
+          <FieldGroup label="✦ 有缘人之称谓">
+            <InkLine
+              value={form.name}
+              onChange={(v) => set('name', v)}
+              placeholder="请输入有缘人的称呼（如：某居士、己身）"
             />
-            真太阳时（按出生地经度校正）
-          </label>
-          <label className="flex items-center gap-2">
-            <span>子时分日：</span>
-            <select
-              value={form.sect}
-              onChange={(e) => set('sect', Number(e.target.value) === 2 ? 2 : 1)}
+          </FieldGroup>
+
+          {/* 乾坤定性（滑块切换，11-bazi.html 招牌） */}
+          <FieldGroup label="✦ 乾坤定性">
+            <div className="relative w-full h-14 bg-xuan-zhi-dark rounded-md p-1 flex items-center border border-dai-qing/15">
+              {/* 滑块 */}
+              <div
+                className={`absolute h-12 bg-dai-qing rounded shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-transform duration-300 left-1 w-[calc(50%-6px)] ${
+                  form.gender === 'female' ? 'translate-x-full' : ''
+                }`}
+              />
+              <div className="relative flex w-full z-[1] text-sm tracking-[0.15em]">
+                {(['male', 'female'] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => set('gender', g)}
+                    className={`flex-1 py-2 transition-colors ${
+                      form.gender === g
+                        ? 'text-hu-po-jin font-bold'
+                        : 'text-dai-qing/50'
+                    }`}
+                  >
+                    {g === 'male' ? '男（乾造）' : '女（坤造）'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </FieldGroup>
+
+          {/* 诞辰之候（年月日 + 时辰） */}
+          <FieldGroup label={`✦ 诞辰之候${zhiName ? `（${zhiName}）` : ''}`}>
+            <div className="grid grid-cols-4 gap-3">
+              <DateCell label="年">
+                <select
+                  className="qn-date-select"
+                  value={form.year}
+                  onChange={(e) => set('year', e.target.value)}
+                >
+                  <option value="">年</option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </DateCell>
+              <DateCell label="月">
+                <select
+                  className="qn-date-select"
+                  value={form.month}
+                  onChange={(e) => set('month', e.target.value)}
+                >
+                  <option value="">月</option>
+                  {MONTHS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </DateCell>
+              <DateCell label="日">
+                <select
+                  className="qn-date-select"
+                  value={form.day}
+                  onChange={(e) => set('day', e.target.value)}
+                >
+                  <option value="">日</option>
+                  {DAYS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </DateCell>
+              <DateCell label="时">
+                <div className="flex items-center justify-center gap-0.5">
+                  <select
+                    className="qn-date-select w-12"
+                    value={form.hour}
+                    onChange={(e) => set('hour', e.target.value)}
+                  >
+                    {HOURS.map((h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-dai-qing font-bold">:</span>
+                  <select
+                    className="qn-date-select w-12"
+                    value={form.minute}
+                    onChange={(e) => set('minute', e.target.value)}
+                  >
+                    {MINUTES.map((m) => (
+                      <option key={m} value={m}>
+                        {String(m).padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </DateCell>
+            </div>
+          </FieldGroup>
+
+          {/* 诞生之地 */}
+          <FieldGroup label="✦ 诞生之地">
+            <InkLine
+              value={form.city}
+              onChange={(v) => set('city', v)}
+              placeholder="如：北京（后端按城市查经纬度）"
+            />
+          </FieldGroup>
+
+          {/* 高级排盘选项（折叠） */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((s) => !s)}
+              className="flex items-center gap-2 text-[11px] tracking-[0.25em] text-hu-po-jin-dark hover:text-hu-po-jin transition-colors"
             >
-              <option value={1}>早子时（23 点算次日）</option>
-              <option value={2}>晚子时（23 点算当日）</option>
-            </select>
-          </label>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+              高级排盘选项
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAdvanced ? 'rotate(180deg)' : '', transition: 'transform 0.2s' }}><path d="M6 9l6 6 6-6"></path></svg>
+            </button>
+          </div>
+
+          {showAdvanced && (
+            <div className="space-y-3 pl-1 -mt-2">
+              <label className="flex items-center gap-2 text-sm text-dai-qing/70">
+                <input
+                  type="checkbox"
+                  checked={form.useTrueSolar}
+                  onChange={(e) => set('useTrueSolar', e.target.checked)}
+                />
+                真太阳时（按出生地经度校正）
+              </label>
+              <label className="flex items-center gap-2 text-sm text-dai-qing/70">
+                <span>子时分日：</span>
+                <select
+                  className="qn-date-select flex-1"
+                  value={form.sect}
+                  onChange={(e) => set('sect', Number(e.target.value) === 2 ? 2 : 1)}
+                >
+                  <option value={1}>早子时（23 点算次日）</option>
+                  <option value={2}>晚子时（23 点算当日）</option>
+                </select>
+              </label>
+            </div>
+          )}
+
+          {error && <p className="text-vermillion text-sm text-center">{error}</p>}
+
+          {/* 提交按钮：琥珀金底 + 光泽扫过（11-bazi.html submit-btn） */}
+          <button
+            type="button"
+            onClick={submit}
+            disabled={loading}
+            className="qn-sheen-sweep relative w-full py-5 mt-1 bg-hu-po-jin text-dai-qing-dark rounded-md font-serif text-[15px] tracking-[0.6em] font-bold shadow-[0_10px_30px_rgba(212,175,55,0.3)] transition-all disabled:opacity-50 overflow-hidden"
+          >
+            {loading ? '推 演 中…' : '开 启 推 演（免费）'}
+          </button>
         </div>
-      </details>
 
-      {error && <p className="text-wx-huo text-sm">{error}</p>}
+        <div className="px-10 pb-8 text-center text-[10px] text-dai-qing/25 tracking-[0.1em]">
+          CYAN CODEX · TRADITIONAL LOGIC · POWERED BY AI
+        </div>
+      </div>
 
-      <button
-        onClick={submit}
-        disabled={loading}
-        className="w-full py-2 bg-ink-900 text-ink-50 rounded font-serif-display tracking-widest hover:bg-ink-700 disabled:opacity-50 transition-colors"
-      >
-        {loading ? '排盘中…' : '开启推演'}
-      </button>
+      {/* ★ 朱砂印章「庚帖」（放卡片外层 wrapper 内，z:50 压过金边，不被 overflow:hidden 裁掉） */}
+      <div className="absolute -top-4 right-7 z-50 flex rotate-[-4deg] flex-col gap-[3px] rounded bg-[var(--seal-red)] px-[7px] py-2 font-serif text-[13px] font-semibold leading-none text-[#f7f2e7] shadow-[inset_0_0_0_1.5px_rgba(247,242,231,0.5),inset_0_0_10px_rgba(63,12,8,0.3),0_2px_10px_rgba(168,57,46,0.22)]">
+        <span>庚</span>
+        <span>帖</span>
+      </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** 字段分组（label + 内容，11-bazi.html field-group） */
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm text-ink-500 mb-1">{label}</label>
+      <div className="flex items-center justify-between text-xs text-dai-qing/50 tracking-[0.15em] mb-3">
+        <span>{label}</span>
+      </div>
       {children}
     </div>
+  );
+}
+
+/** 年月日时下拉格（11-bazi.html date-cell） */
+function DateCell({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#e8e4c9] p-3 rounded border border-dai-qing/15 text-center transition-colors hover:border-hu-po-jin/40 relative">
+      <span className="block text-[10px] text-dai-qing/40 mb-1">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 墨线下划线输入（qn-inkline，11-bazi.html 招牌样式）。
+ * 透明背景 + 底部细线，focus 时琥珀金高亮线展开。
+ */
+function InkLine({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <span className="relative block">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder={placeholder}
+        className="w-full bg-transparent border-0 border-b border-dai-qing/20 outline-none px-1 py-3 text-dai-qing text-lg placeholder:text-dai-qing/25 focus:border-transparent transition-colors"
+      />
+      <span
+        className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-hu-po-jin to-hu-po-jin/30 origin-left transition-transform duration-300"
+        style={{ transform: focused ? 'scaleX(1)' : 'scaleX(0)' }}
+      />
+    </span>
   );
 }
