@@ -115,7 +115,21 @@ function inferYunDirection(yearGan: string, gender: 'male' | 'female'): '顺行'
 
 /** ①层排盘适配入口（全项目唯一接触 bazi-core 的函数）。 */
 export function adaptBaziCore(input: ChartInput): BaziChart {
-  const output = getBaziChart(toCoreInput(input));
+  // bazi-core 的 cityCache 只覆盖约 90 个城市，用户输入的城市（如「漳州」）
+  // 可能不在其中 → 抛 "City not in cache"。兜底：捕获后回退成不校正真太阳时
+  // （用标准时区时间），真太阳时偏差最多几分钟，对排盘影响极小（除非卡时辰边界）。
+  let output: any;
+  try {
+    output = getBaziChart(toCoreInput(input));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    if (/not in.*cache|city/i.test(msg) && input.longitude == null) {
+      // 城市查不到且无经纬度：回退不校正真太阳时重试
+      output = getBaziChart(toCoreInput({ ...input, city: undefined, useTrueSolar: false }));
+    } else {
+      throw e;
+    }
+  }
   // 真正的排盘数据在 output.八字
   const core = (output as any).八字 as any;
   const trueSolar = (output as any).真太阳时 as any;
