@@ -83,7 +83,7 @@ export default function Home() {
 
         {/* hero 内容 */}
         <div className="relative z-[2]">
-          <h1 className="flex gap-[0.1em] leading-none font-serif font-bold text-[clamp(80px,14vw,160px)]">
+          <h1 className="flex justify-center gap-[0.1em] leading-none font-serif font-bold text-[clamp(80px,14vw,160px)]">
             <span className="qn-glow-breathe text-hu-po-jin">青</span>
             <span className="qn-glow-breathe text-hu-po-jin">囊</span>
           </h1>

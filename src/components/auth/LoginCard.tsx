@@ -116,6 +116,7 @@ export function LoginCard() {
                 value={password}
                 onChange={setPassword}
                 placeholder="设置密码（至少 6 位）"
+                showToggle
               />
             </div>
 
@@ -166,24 +167,51 @@ function InkLine({
   value,
   onChange,
   placeholder,
+  showToggle,
 }: {
   type: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  showToggle?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const inputType = showToggle ? (visible ? 'text' : 'password') : type;
   return (
     <span className="relative block">
       <input
-        type={type}
+        type={inputType}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
-        className="w-full bg-transparent border-0 border-b border-dai-qing/15 outline-none px-1 py-2.5 text-dai-qing text-[15px] placeholder:text-dai-qing/25 focus:border-b-transparent transition-colors"
+        className="w-full bg-transparent border-0 border-b border-dai-qing/15 outline-none px-1 py-2.5 pr-8 text-dai-qing text-[15px] placeholder:text-dai-qing/25 focus:border-b-transparent transition-colors"
       />
+      {/* 明文切换小眼睛（仅密码框） */}
+      {showToggle && (
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? '隐藏密码' : '显示密码'}
+          className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-dai-qing/40 hover:text-hu-po-jin-dark transition-colors"
+        >
+          {visible ? (
+            // 睁眼
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          ) : (
+            // 闭眼
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          )}
+        </button>
+      )}
       <span
         className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-hu-po-jin to-hu-po-jin/30 origin-left transition-transform duration-300"
         style={{ transform: focused ? 'scaleX(1)' : 'scaleX(0)' }}
