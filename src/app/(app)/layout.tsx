@@ -18,8 +18,10 @@ export default function AppLayout({
   return (
     <>
       <TopNav />
-      {/* pb-16 给移动底栏留空间 */}
-      <div className="flex-1 pb-16 sm:pb-0">{children}</div>
+      {/* 移动底栏留空间：3.5rem + iPhone 安全区；桌面 md+ 无底栏 */}
+      <div className="flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+        {children}
+      </div>
       <BottomNav />
     </>
   );

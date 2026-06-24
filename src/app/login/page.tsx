@@ -14,7 +14,7 @@ export default function LoginPage() {
     <>
       <TopNav />
       <main
-        className="relative min-h-screen flex flex-col items-center justify-center px-6 py-20 text-center overflow-hidden"
+        className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-20 text-center overflow-hidden"
         style={{
           background:
             'linear-gradient(to bottom, #f5f5dc 0%, #f5f5dc 50%, #003333 100%)',

@@ -52,7 +52,7 @@ export default function Home() {
   return (
     <>
     <TopNav />
-    <main className="flex flex-col pb-16 sm:pb-0">
+    <main className="flex flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
       {/* ===== S0 HERO：宣纸→黛青渐变 + 波浪横跨分界 ===== */}
       <section
         className="relative min-h-[88vh] flex flex-col items-center justify-center px-6 py-16 text-center overflow-hidden"
