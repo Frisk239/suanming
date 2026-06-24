@@ -36,8 +36,10 @@ export function LoginCard() {
           : await supabase.auth.signUp({ email, password });
       if (error) throw error;
       // 注册即登录（邮箱确认已在 Supabase 后台关闭，不发邮件）。
-      // 两种模式成功后都直接 refresh，触发根布局重取 session。
+      // 两种模式成功后都跳首页。先 refresh 触发根布局重取 session，
+      // 再 replace 跳转（replace 让登录页不留在历史栈，返回键不回到登录页）。
       router.refresh();
+      router.replace('/');
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : '操作失败');
     } finally {
