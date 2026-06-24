@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SessionProvider } from "@/components/auth/SessionProvider";
+import { getSession } from "@/lib/supabase/session";
 
 /*
  * 衬线字体：标题/排盘用，显古意（spec 5.4）。
@@ -15,18 +17,24 @@ import "./globals.css";
  */
 
 export const metadata: Metadata = {
-  title: "青囊复刻 · 八字排盘",
-  description: "古籍数字化 AI 推演 · 八字模块",
+  title: "青囊复刻 · 古籍数字化 AI 推演",
+  description: "八字排盘 · 格局用神 · AI 详批｜古籍为根，AI 参详",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 服务端取 session 下发给客户端 Context（TopNav/AuthButton 读用）。
+  // getSession 内部已 catch，不会因网络/未登录抛出。
+  const user = await getSession();
+
   return (
     <html lang="zh-CN" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SessionProvider user={user}>{children}</SessionProvider>
+      </body>
     </html>
   );
 }

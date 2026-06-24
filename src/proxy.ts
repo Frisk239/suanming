@@ -1,17 +1,19 @@
-// src/middleware.ts
+// src/proxy.ts
 // Supabase session 刷新（@supabase/ssr 标准）。
+//
+// Next 16 breaking change：middleware → proxy（文件名 + 函数名都改，见
+// node_modules/next/dist/docs proxy.md「Migration to Proxy」）。Proxy 默认 Node runtime。
 //
 // 每次请求用 refresh_token 刷新 session cookie，保证 Server Component 能读到有效 session。
 // 不强制登录（排盘免费，spec 5.3）——仅维持 session，登录门槛在 interpret route 内做（Task 9）。
-//
 // matcher 排除静态资源与图片。
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { setupProxy } from '@/lib/supabase/proxy';
 
-export async function middleware(request: NextRequest) {
-  // middleware 跑在 edge/node runtime，进程级代理初始化一次即可
+export async function proxy(request: NextRequest) {
+  // proxy 跑在 Node runtime，进程级代理初始化一次即可
   setupProxy();
 
   const response = NextResponse.next({ request });
