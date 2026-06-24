@@ -1,7 +1,8 @@
 // src/components/bazi/InterpretPanel.tsx
-// ③层 AI 详批面板（spec 5.7）。SSE 流式渲染四段式长文。
+// ③层 AI 详批面板（spec 5.7）。SSE 流式渲染五段式长文。
 // 人格（学者/隐士）+ 深度（专业/通俗）下拉，切换后重新请求。
-// 四段【依据】【推演】【结论】【边界】分段着色渲染。
+// 四个二级段【依据】【推演】【结论】【边界】分段着色渲染；
+// 结论段内含五个 ### 主题子卡片（事业/财运/婚姻/健康/家人六亲，2026-06-24 颗粒度细化）。
 
 'use client';
 
@@ -15,41 +16,84 @@ interface Props {
   input: ChartInput;
 }
 
-// 四段式标记（spec 4.5 prompt 要求 LLM 输出【依据】【推演】【结论】【边界】）
+// 二级段元信息（prompt.ts 的 ## 标题）。结论段 desc 列五主题。
 const SEGMENTS = [
   { tag: '依据', label: '依据 · 格局用神', desc: '本盘核心格局/用神/病灶（引古籍）' },
   { tag: '推演', label: '推演 · 命理逻辑', desc: '从依据到结论的逻辑链' },
-  { tag: '结论', label: '结论 · 分项论断', desc: '事业/财运/婚姻/健康' },
+  { tag: '结论', label: '结论 · 五主题深入', desc: '事业 / 财运 / 婚姻感情 / 健康 / 家人六亲' },
   { tag: '边界', label: '边界 · 不确定项', desc: '不确定项 + 文化研究声明' },
 ] as const;
 
+// 结论段内 ### 三级主题的颜色点缀（让五个主题卡片有区分度）
+const SUB_THEME_STYLE: Record<string, string> = {
+  事业: 'border-ink-300',
+  财运: 'border-wx-tu',
+  婚姻感情: 'border-wx-huo',
+  健康: 'border-wx-mu',
+  家人六亲: 'border-wx-jin',
+};
+
+/** 一个段：tag 是二级段名（依据/推演/结论/边界）；结论段的 sub 是 ### 主题子段 */
+interface Segment {
+  tag: string | null;
+  body: string;
+  /** 仅结论段：### 三级标题拆出的主题子段（事业/财运/...） */
+  sub?: { tag: string; body: string }[];
+}
+
 /**
- * 把流式文本按四段 markdown 标题分段。后端 prompt.ts:34 要求 LLM 输出
- * 「## 依据」「## 推演」「## 结论」「## 边界」（实测 LLM 忠实输出此格式）。
- * 未匹配段归入「正文」（如首个标记前的导语）。
+ * 把流式文本按 ## 二级标题切四个段（依据/推演/结论/边界）。
+ * 结论段内部再按 ### 三级标题拆成主题子段（事业/财运/婚姻/健康/家人六亲）。
+ * 后端 prompt.ts 要求 LLM 用 markdown 标题输出（实测忠实执行）。
  */
-function segment(text: string): { tag: string | null; body: string }[] {
-  // 匹配整段标题行：## + 标记词 + 换行。headerStart/End 用于切分。
+function segment(text: string): Segment[] {
+  // 1) 先按 ## 二级标题切四段
   const re = /(?:^|\n)(##\s*)(依据|推演|结论|边界)\s*\n/g;
   const marks: { tag: string; headerStart: number; headerEnd: number }[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    // 若 \n 开头，header 从 ## 开始（换行保留在前段）
     const headerStart = m.index + (text[m.index] === '\n' ? 1 : 0);
     marks.push({ tag: m[2], headerStart, headerEnd: m.index + m[0].length });
   }
   if (marks.length === 0) {
     return [{ tag: null, body: text.trim() }];
   }
-  const result: { tag: string | null; body: string }[] = [];
+  const result: Segment[] = [];
   const lead = text.slice(0, marks[0].headerStart).trim();
   if (lead) result.push({ tag: null, body: lead });
   for (let i = 0; i < marks.length; i++) {
     const start = marks[i].headerEnd;
     const end = i + 1 < marks.length ? marks[i + 1].headerStart : text.length;
-    result.push({ tag: marks[i].tag, body: text.slice(start, end).trim() });
+    const segBody = text.slice(start, end).trim();
+    const seg: Segment = { tag: marks[i].tag, body: segBody };
+    // 2) 结论段：内部按 ### 三级标题拆主题子段
+    if (seg.tag === '结论') {
+      seg.sub = splitSubthemes(segBody);
+    }
+    result.push(seg);
   }
   return result;
+}
+
+/** 把结论段正文按 ### 三级标题拆成主题子段。无 ### 时返回空数组（整段当一个块）。 */
+function splitSubthemes(body: string): { tag: string; body: string }[] {
+  const re = /(?:^|\n)(###\s*)([^\n]+?)\s*\n/g;
+  const marks: { tag: string; headerStart: number; headerEnd: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    const headerStart = m.index + (body[m.index] === '\n' ? 1 : 0);
+    marks.push({ tag: m[2].trim(), headerStart, headerEnd: m.index + m[0].length });
+  }
+  if (marks.length === 0) return [];
+  const subs: { tag: string; body: string }[] = [];
+  const lead = body.slice(0, marks[0].headerStart).trim();
+  if (lead) subs.push({ tag: '', body: lead }); // 主题前的导语（如"以下分主题展开"）
+  for (let i = 0; i < marks.length; i++) {
+    const start = marks[i].headerEnd;
+    const end = i + 1 < marks.length ? marks[i + 1].headerStart : body.length;
+    subs.push({ tag: marks[i].tag, body: body.slice(start, end).trim() });
+  }
+  return subs;
 }
 
 const SEG_STYLE: Record<string, string> = {
@@ -168,12 +212,13 @@ export function InterpretPanel({ input }: Props) {
             </p>
           )}
 
-          {/* 四段式渲染 */}
+          {/* 五段式渲染（结论段含 ### 主题子卡片） */}
           <div className="space-y-3">
             {segments.map((seg, i) => {
               const meta = SEGMENTS.find((s) => s.tag === seg.tag);
+              const isLast = i === segments.length - 1;
+              // 正文（前导或未分段）
               if (!seg.tag || !meta) {
-                // 正文（前导或未分段）
                 if (!seg.body) return null;
                 return (
                   <p key={i} className="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">
@@ -181,6 +226,41 @@ export function InterpretPanel({ input }: Props) {
                   </p>
                 );
               }
+              // 结论段：若有 ### 子主题，渲染成主题子卡片列表
+              if (seg.tag === '结论' && seg.sub && seg.sub.length > 0) {
+                return (
+                  <div key={i} className={`border-l-2 pl-3 ${SEG_STYLE[seg.tag] ?? ''}`}>
+                    <div className="font-serif-display text-ink-900 text-sm">{meta.label}</div>
+                    <div className="text-xs text-ink-300 mb-2">{meta.desc}</div>
+                    <div className="space-y-3">
+                      {seg.sub.map((sub, si) => {
+                        const isLastSub = isLast && si === seg.sub!.length - 1;
+                        const hasTag = sub.tag.length > 0;
+                        return (
+                          <div
+                            key={si}
+                            className={`pl-2 ${hasTag ? `border-l-2 ${SUB_THEME_STYLE[sub.tag] ?? 'border-ink-200'}` : ''}`}
+                          >
+                            {hasTag && (
+                              <div className="font-serif-display text-ink-900 text-sm mb-0.5">
+                                {sub.tag}
+                              </div>
+                            )}
+                            <p className="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">
+                              <RichText text={sub.body} />
+                              {/* 流式中：最后一个子段末尾显示光标 */}
+                              {streaming && isLastSub && (
+                                <span className="animate-pulse text-accent">▌</span>
+                              )}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+              // 依据/推演/边界（普通段，无子主题）
               return (
                 <div key={i} className={`border-l-2 pl-3 ${SEG_STYLE[seg.tag] ?? ''}`}>
                   <div className="font-serif-display text-ink-900 text-sm">{meta.label}</div>
@@ -188,7 +268,7 @@ export function InterpretPanel({ input }: Props) {
                   <p className="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">
                     <RichText text={seg.body} />
                     {/* 末段流式中显示光标 */}
-                    {streaming && i === segments.length - 1 && (
+                    {streaming && isLast && (
                       <span className="animate-pulse text-accent">▌</span>
                     )}
                   </p>
