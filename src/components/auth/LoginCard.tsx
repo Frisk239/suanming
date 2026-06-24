@@ -17,7 +17,6 @@ export function LoginCard() {
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   const supabase = createClient();
@@ -26,7 +25,6 @@ export function LoginCard() {
     e.preventDefault();
     setBusy(true);
     setErr('');
-    setMsg('');
     try {
       const { error } =
         mode === 'signin'
@@ -140,9 +138,8 @@ export function LoginCard() {
             </button>
           </p>
 
-          {/* 错误/成功提示 */}
+          {/* 错误提示 */}
           {err && <p className="mt-3.5 text-center text-[13px] text-vermillion">{err}</p>}
-          {msg && <p className="mt-3.5 text-center text-[13px] text-hu-po-jin-dark">{msg}</p>}
         </div>
 
         {/* 朱砂印「青囊」：card-wrap 内、卡片外，z:50 压过金边 */}

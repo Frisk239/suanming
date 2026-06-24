@@ -137,7 +137,7 @@ export function InterpretPanel({ input }: Props) {
 
   // 详批门槛（spec 5.3，M5）：未登录 → 登录引导；401 NEEDS_AUTH 错误 → 同样引导。
   // 排盘/规则解读（①②层）免费，AI 详批（③层）需登录。
-  const needsAuth = !user || error.startsWith('__NEEDS_AUTH__:');
+  const needsAuth = !user || (!!error && error.startsWith('__NEEDS_AUTH__:'));
 
   // 切换人格/深度时，若已开始过则重新生成（spec 5.7）
   useEffect(() => {

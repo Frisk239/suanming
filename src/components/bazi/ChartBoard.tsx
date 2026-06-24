@@ -28,7 +28,11 @@ export function ChartBoard({ chart }: Props) {
         </h2>
         <p className="text-sm text-dai-qing/60 mt-1">
           公历 {chart.solarDate}
-          {chart.trueSolarTime ? ` · 真太阳时 ${chart.trueSolarTime}` : ''}
+          {chart.trueSolarTime
+            ? ` · 真太阳时 ${chart.trueSolarTime}`
+            : chart.longitude
+              ? ' · 真太阳时未校正'
+              : ' · 标准时（城市未在校正库）'}
         </p>
         {chart.lunarDate && (
           <p className="text-sm text-dai-qing/60">农历 {chart.lunarDate}</p>
