@@ -17,7 +17,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MODULES } from '@/config/modules';
-import { HomeIcon, BaziIcon, ZiweiIcon, MoreIcon, UserIcon } from './NavIcon';
+import { HomeIcon, MoreIcon, UserIcon, NAV_ICONS } from './NavIcon';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -46,19 +46,22 @@ export function BottomNav() {
             <span className="leading-tight text-[10px]">首页</span>
           </Link>
 
-          {/* 核心模块（八字/紫微） */}
-          {coreMods.map((m) => (
-            <Link
-              key={m.id}
-              href={`/${m.id}`}
-              className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 transition-colors ${
-                isActive(`/${m.id}`) ? 'text-dai-qing' : 'text-dai-qing/70'
-              }`}
-            >
-              {m.id === 'bazi' ? <BaziIcon /> : <ZiweiIcon />}
-              <span className="leading-tight text-[10px]">{m.label}</span>
-            </Link>
-          ))}
+          {/* 核心模块（pinnedBottom，图标由 modules.ts bottomIcon 字段驱动） */}
+          {coreMods.map((m) => {
+            const Icon = NAV_ICONS[m.bottomIcon ?? 'more'];
+            return (
+              <Link
+                key={m.id}
+                href={`/${m.id}`}
+                className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 transition-colors ${
+                  isActive(`/${m.id}`) ? 'text-dai-qing' : 'text-dai-qing/70'
+                }`}
+              >
+                <Icon />
+                <span className="leading-tight text-[10px]">{m.label}</span>
+              </Link>
+            );
+          })}
 
           {/* 更多（按钮，开覆盖层） */}
           <button

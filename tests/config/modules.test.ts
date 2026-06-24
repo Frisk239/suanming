@@ -45,4 +45,10 @@ describe('modules 注册表', () => {
       expect(m.icon!.length).toBeGreaterThanOrEqual(1);
     }
   });
+
+  it('pinnedBottom 模块必须有 bottomIcon（底栏 SVG 图标键）', () => {
+    for (const m of MODULES.filter((m) => m.pinnedBottom)) {
+      expect(m.bottomIcon, `${m.id} pinnedBottom 但缺 bottomIcon`).toBeTruthy();
+    }
+  });
 });

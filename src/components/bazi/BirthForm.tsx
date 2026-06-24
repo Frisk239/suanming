@@ -14,6 +14,7 @@
 import { useState } from 'react';
 import type { BirthFormState } from '@/types/ui';
 import type { ChartInput } from '@/types/bazi';
+import { CITIES, PROVINCES, findCity } from '@/config/cities';
 
 const YEARS = Array.from({ length: 107 }, (_, i) => 2026 - i); // 1920-2026
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -59,6 +60,11 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
   const [error, setError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // 省市级联：从 form.city 反查所在省（分享 URL 复现时还原下拉）
+  const initialProvince =
+    PROVINCES.find((p) => CITIES[p].some((c) => c.name === form.city)) ?? '直辖市';
+  const [province, setProvince] = useState(initialProvince);
+
   const set = <K extends keyof BirthFormState>(k: K, v: BirthFormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -68,6 +74,8 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
       setError('请填写完整出生日期和时辰');
       return;
     }
+    // 从城市表查经纬度（绕过 bazi-core cityCache，真太阳时校正稳定）
+    const coord = findCity(form.city);
     const input: ChartInput = {
       name: form.name || undefined,
       gender: form.gender,
@@ -77,6 +85,8 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
       )} ${form.hour.padStart(2, '0')}:${form.minute.padStart(2, '0')}`,
       isLunar: form.isLunar,
       city: form.city,
+      longitude: coord?.lng,
+      latitude: coord?.lat,
       useTrueSolar: form.useTrueSolar,
       sect: form.sect,
     };
@@ -226,13 +236,42 @@ export function BirthForm({ initial, onSubmit, loading }: Props) {
             </div>
           </FieldGroup>
 
-          {/* 诞生之地 */}
+          {/* 诞生之地（省市级联下拉，选市自动带经纬度） */}
           <FieldGroup label="✦ 诞生之地">
-            <InkLine
-              value={form.city}
-              onChange={(v) => set('city', v)}
-              placeholder="如：北京（后端按城市查经纬度）"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <DateCell label="省/市">
+                <select
+                  className="qn-date-select"
+                  value={province}
+                  onChange={(e) => {
+                    const p = e.target.value;
+                    setProvince(p);
+                    // 切省时自动选该省第一个城市
+                    const firstCity = CITIES[p][0];
+                    if (firstCity) set('city', firstCity.name);
+                  }}
+                >
+                  {PROVINCES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </DateCell>
+              <DateCell label="市">
+                <select
+                  className="qn-date-select"
+                  value={form.city}
+                  onChange={(e) => set('city', e.target.value)}
+                >
+                  {CITIES[province]?.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </DateCell>
+            </div>
           </FieldGroup>
 
           {/* 高级排盘选项（折叠） */}

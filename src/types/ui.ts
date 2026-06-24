@@ -63,4 +63,7 @@ export interface ModuleConfig {
   pinnedBottom?: boolean;
   /** 单字图标（青囊功能卡片用，如 '命'/'卦'/'紫'） */
   icon?: string;
+  /** 底部导航图标键（指向 NavIcon 的图标，如 'bazi'/'ziwei'/'liuyao'/'hepan'）。
+   *  pinnedBottom 模块必填，BottomNav 据此渲染对应 SVG。新增模块加一项即可。 */
+  bottomIcon?: 'bazi' | 'ziwei' | 'liuyao' | 'hepan' | 'home' | 'more' | 'user';
 }

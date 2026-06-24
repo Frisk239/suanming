@@ -117,3 +117,20 @@ export function UserIcon({ size = 22, className = '' }: IconProps) {
     </svg>
   );
 }
+
+/**
+ * 按图标键名取对应图标组件（modules.ts 的 bottomIcon 字段用）。
+ * 新增模块只要在 modules.ts 配 bottomIcon 键 + 此处加映射，BottomNav 自动渲染。
+ */
+export const NAV_ICONS = {
+  home: HomeIcon,
+  bazi: BaziIcon,
+  ziwei: ZiweiIcon,
+  liuyao: MoreIcon, // 暂复用「更多」点阵图标，六爻专属图标待补
+  hepan: MoreIcon, // 暂复用，合盘专属图标待补
+  more: MoreIcon,
+  user: UserIcon,
+} as const;
+
+export type NavIconKey = keyof typeof NAV_ICONS;
+

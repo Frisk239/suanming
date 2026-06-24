@@ -16,6 +16,7 @@ export const MODULES: ModuleConfig[] = [
     order: 10,
     pinnedBottom: true,
     icon: '命',
+    bottomIcon: 'bazi',
   },
   {
     id: 'ziwei',
@@ -25,6 +26,7 @@ export const MODULES: ModuleConfig[] = [
     order: 20,
     pinnedBottom: true,
     icon: '紫',
+    bottomIcon: 'ziwei',
   },
   {
     id: 'liuyao',
