@@ -1,44 +1,95 @@
 @import "tailwindcss";
 
+/*
+ * 华彩皮肤调色板（青囊 qingnang.cc 最热门深色皮肤，2026-06-24 复刻）。
+ *
+ * 色值来源：sample/frontend-sample/10-home.html + 11-bazi.html
+ * 经 chrome-devtools getComputedStyle 实测（用户验收过的页面级原型）。
+ * 注意：00-color-system.html 是早期色卡，未同步，以其页面原型的实测值为准。
+ *
+ * 三色系：
+ *   黛青 dai-qing  #004d4d — 深墨主色，文字/滑块/卡片渐变
+ *   琥珀金 hu-po-jin #d4af37 — 强调，标题/线条/流光
+ *   玄纸 xuan-zhi  #fbfaf5 — 暖白文字
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 深底主色系 */
+  --color-dai-qing-dark: #003333; /* 黛青深 rgb(0,51,51) 头部渐变深端/墨海深底 */
+  --color-dai-qing: #004d4d;      /* 黛青 rgb(0,77,77) 主色：文字/滑块/卡片渐变 */
+  --color-dai-qing-light: #4a5c5c;/* 黛青浅 边框/分隔 */
+
+  /* 强调金系 */
+  --color-hu-po-jin-dark: #a8852f; /* 琥珀金沉 hover/pressed */
+  --color-hu-po-jin: #d4af37;      /* 琥珀金 rgb(212,175,55) 主强调 ★ */
+  --color-hu-po-jin-light: #e8c84a;/* 浅鎏金 rgb(232,200,74) hover */
+
+  /* 文字玄纸系 */
+  --color-xuan-zhi-dark: #1c2225;
+  --color-xuan-zhi: #fbfaf5;       /* 玄纸 rgb(251,250,245) 深底主文字（暖白）★ */
+  --color-xuan-zhi-warm: #f5f5dc;  /* 玄纸暖 rgb(245,245,220) 排盘页浅底 */
+  --color-xuan-zhi-light: #f4f1e8;
+
+  /* 朱砂（庚帖印章） */
+  --seal-red: #a8392e;
+
+  /* 旧基底变量（body background/foreground 引用） */
+  --background: #003333;
+  --foreground: #fbfaf5;
 }
 
 /*
- * 设计令牌（spec 5.4 视觉基调）。
+ * @theme inline：令牌内联进 utility class。
  *
- * 全部放 @theme inline（M1 已验证可工作的形式）：墨色主调 + 五行点缀色 +
- * 强调色 + 字体栈。inline 模式把令牌值内联进 utility class
- * （text-ink-900 / bg-wx-mu / text-accent 等），并输出到 :root 供 var() 引用。
+ * 策略：保留 ink-* / accent / wx-* 的类名映射（M4 组件大量引用），
+ * 但色值指向华彩体系。这样 M4 组件零改动即获华彩外观，Task 10d
+ * 深度复刻时再逐步迁移到语义化的 dai-qing/hu-po-jin/xuan-zhi 类。
  *
- * 实测（2026-06-23）：单块 @theme inline 是 Turbopack dev 的稳定形式；
+ * ink-* 映射说明（适配深底）：
+ *   ink-50/100/200 → 深墨卡片/边框（用渐深，越大越深以匹配"越浅越亮"的反直觉）
+ *   ink-300/500/700/900 → 文字梯度，越大越亮（ink-900=主标题暖白玄纸）
+ *
+ * 实测（2026-06-23/M1）：单块 @theme inline 是 Turbopack dev 的稳定形式，
  * 不要拆成两个 @theme 块（会触发 Turbopack panic）。
  */
 @theme inline {
-  /* 保留 M1 已有的 --color-background/--color-foreground */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* 主色调：墨色系（spec 5.4 墨色主调） */
-  --color-ink-50: #f5f5f4;
-  --color-ink-100: #e7e5e4;
-  --color-ink-200: #d6d3d1;
-  --color-ink-300: #a8a29e;
-  --color-ink-500: #57534e;
-  --color-ink-700: #292524;
-  --color-ink-900: #1c1917;
+  /* 语义化令牌（新组件用）：直接映射华彩三色系 */
+  --color-dai-qing-dark: var(--color-dai-qing-dark);
+  --color-dai-qing: var(--color-dai-qing);
+  --color-dai-qing-light: var(--color-dai-qing-light);
+  --color-hu-po-jin-dark: var(--color-hu-po-jin-dark);
+  --color-hu-po-jin: var(--color-hu-po-jin);
+  --color-hu-po-jin-light: var(--color-hu-po-jin-light);
+  --color-xuan-zhi-dark: var(--color-xuan-zhi-dark);
+  --color-xuan-zhi: var(--color-xuan-zhi);
+  --color-xuan-zhi-warm: var(--color-xuan-zhi-warm);
+  --color-xuan-zhi-light: var(--color-xuan-zhi-light);
+  --color-seal-red: var(--seal-red);
 
-  /* 强调色：青色系（古意，spec 5.4） */
-  --color-accent: #4a7c59;
-  --color-accent-deep: #355e3b;
+  /* 兼容映射：ink-* 类名指向华彩体系（适配深底，文字越大越亮） */
+  --color-ink-50: #1a2424;   /* hover 高亮（最浅墨面，深底上略亮） */
+  --color-ink-100: #0f1a1a;  /* 卡片表面（深墨底上略亮的层） */
+  --color-ink-200: #1f3535;  /* 边框/分隔（黛青浅调） */
+  --color-ink-300: #6b7a7a;  /* 次要文字 */
+  --color-ink-500: #8a9a9a;  /* 三级文字（玄纸暗调） */
+  --color-ink-700: #c8d2cc;  /* 正文（玄纸淡） */
+  --color-ink-900: #fbfaf5;  /* 主标题（玄纸暖白） */
 
-  /* 五行点缀色（对齐 mingyu styles.css 五行配色，spec 5.4） */
-  --color-wx-jin: #6b7280; /* 金-银灰 */
-  --color-wx-mu: #15803d; /* 木-青绿 */
-  --color-wx-shui: #2563eb; /* 水-蓝 */
-  --color-wx-huo: #b91c1c; /* 火-赤（略沉，避免过于刺眼） */
-  --color-wx-tu: #b45309; /* 土-黄褐 */
+  /* 强调色：accent 映射琥珀金（兼容 M4 组件的 text-accent/bg-accent） */
+  --color-accent: #d4af37;       /* 琥珀金 */
+  --color-accent-deep: #a8852f;  /* 琥珀金沉 */
+
+  /* 朱砂（兼容 vermillion 命名） */
+  --color-vermillion: #a8392e;
+
+  /* 五行点缀色（深底适配：整体提亮、提饱和，源自计划 Task 1） */
+  --color-wx-jin: #c0c4cc; /* 金-银白 */
+  --color-wx-mu: #5ba882;  /* 木-玉绿 */
+  --color-wx-shui: #5b9bd5;/* 水-靛蓝 */
+  --color-wx-huo: #e0564e; /* 火-朱红 */
+  --color-wx-tu: #d4a547;  /* 土-琥珀（与琥珀金呼应） */
 
   /* 系统字体栈：标题衬线显古意，正文无衬线保可读（spec 5.4） */
   --font-sans: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei",
@@ -46,24 +97,25 @@
   --font-serif: "Songti SC", "SimSun", "Source Han Serif SC", serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--color-ink-700);
   font-family: var(--font-sans);
+  /*
+   * 华彩海纹氤氲：用径向渐变模拟古典海气层次。
+   * 极淡，不喧宾夺主。波浪墨海组件（Task 10a，webp 双层横滚）
+   * 会叠加在首页/分区上，此处仅作全站底纹基调。
+   */
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.06), transparent 40%),
+    radial-gradient(circle at 82% 88%, rgba(0, 77, 77, 0.10), transparent 45%);
+  background-attachment: fixed;
 }
 
 /*
  * 标题用衬线显古意（spec 5.4：标题衬线、正文无衬线）。
- * 用系统衬线字体栈（Songti SC / SimSun / Source Han Serif SC），
- * 各平台原生支持，无需联网下载。@theme inline 的 --font-serif 令牌
- * 已含该栈，这里直接引用保持单一来源。
+ * 系统衬线字体栈（Songti SC / SimSun / Source Han Serif SC），
+ * 各平台原生支持，无需联网下载。@theme inline 的 --font-serif 已含该栈。
  */
 .font-serif-display {
   font-family: var(--font-serif);
@@ -71,21 +123,24 @@ body {
 }
 
 /*
- * 表单复用组件类（spec 5.5 录入表单）。Tailwind v4 用 @layer components
- * + @apply 组合 utility。BirthForm.tsx 等组件引用这些类。
+ * 表单复用组件类（spec 5.5）。Tailwind v4 用 @layer components + @apply。
+ * 华彩深底适配：input 用深墨底 + 玄纸字，seg-btn 同理。
  */
 @layer components {
-  /* 输入框 / 下拉框统一样式 */
+  /* 输入框 / 下拉框统一样式（华彩深底） */
   .input {
-    @apply flex-1 px-2 py-1.5 border border-ink-100 rounded text-sm bg-ink-50;
+    @apply flex-1 px-2 py-1.5 border border-ink-200 rounded text-sm bg-ink-100 text-ink-900;
     @apply focus:outline-none focus:border-accent;
+  }
+  .input::placeholder {
+    color: var(--color-ink-500);
   }
   /* 分段按钮（性别按钮组） */
   .seg-btn {
-    @apply flex-1 py-1.5 px-3 border border-ink-100 rounded text-sm;
+    @apply flex-1 py-1.5 px-3 border border-ink-200 rounded text-sm text-ink-700;
     @apply hover:bg-ink-50 transition-colors;
   }
   .seg-btn-active {
-    @apply bg-ink-900 text-ink-50 border-ink-900;
+    @apply bg-accent text-ink-900 border-accent;
   }
 }
