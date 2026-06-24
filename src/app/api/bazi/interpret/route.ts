@@ -14,10 +14,22 @@ import { analyzeBazi } from '@/lib/bazi-engine';
 import { retrieve } from '@/lib/rag/retriever';
 import { getProvider } from '@/lib/llm/provider';
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/llm/prompt';
+import { requireUser } from '@/lib/supabase/session';
 import type { ChartInput } from '@/types/bazi';
 import type { Persona, Depth } from '@/lib/llm/types';
 
 export async function POST(request: NextRequest) {
+  // 详批门槛（spec 5.3，M5）：排盘免费，AI 详批需登录。
+  // 未登录返回 401，前端 InterpretPanel 展示「登录后详批」引导。
+  try {
+    await requireUser();
+  } catch {
+    return new Response(JSON.stringify({ error: '请先登录后再使用 AI 详批' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   let body: { chart: ChartInput; persona?: Persona; depth?: Depth };
   try {
     body = await request.json();

@@ -1,6 +1,9 @@
 // src/hooks/useInterpretStream.ts
 // interpret SSE 流式消费 hook（spec 5.7）。自建 fetch+ReadableStream+AbortController
 // （mingyu 无流式可参考）。封装③层 interpret 的 token 增量、错误、停止、重置。
+//
+// 注：401 未登录错误以 __NEEDS_AUTH__: 前缀原样透传到 error（api.ts 加的标记），
+// InterpretPanel 据此展示登录引导而非普通错误。
 
 'use client';
 

@@ -7,7 +7,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useInterpretStream } from '@/hooks/useInterpretStream';
+import { useSession } from '@/components/auth/SessionProvider';
 import type { ChartInput } from '@/types/bazi';
 import type { InterpretOptions } from '@/types/ui';
 
@@ -125,12 +127,17 @@ function RichText({ text }: { text: string }) {
 }
 
 export function InterpretPanel({ input }: Props) {
+  const { user } = useSession();
   const [options, setOptions] = useState<InterpretOptions>({
     persona: 'scholar',
     depth: 'standard',
   });
   const { content, streaming, error, start, stop, reset } = useInterpretStream();
   const [started, setStarted] = useState(false);
+
+  // 详批门槛（spec 5.3，M5）：未登录 → 登录引导；401 NEEDS_AUTH 错误 → 同样引导。
+  // 排盘/规则解读（①②层）免费，AI 详批（③层）需登录。
+  const needsAuth = !user || error.startsWith('__NEEDS_AUTH__:');
 
   // 切换人格/深度时，若已开始过则重新生成（spec 5.7）
   useEffect(() => {
@@ -147,8 +154,28 @@ export function InterpretPanel({ input }: Props) {
 
   const segments = segment(content);
 
+  // 未登录：展示「登录后详批」引导，不渲染详批控件
+  if (needsAuth) {
+    return (
+      <div className="rounded-lg border border-dai-qing-light/30 bg-dai-qing-dark/60 backdrop-blur p-6 text-center">
+        <div className="font-serif-display text-lg text-xuan-zhi tracking-widest mb-2">
+          AI 详批
+        </div>
+        <p className="text-sm text-xuan-zhi/50 mb-5 leading-relaxed">
+          排盘与规则解读免费开放；AI 逐句详批需登录后使用。
+        </p>
+        <Link
+          href="/login"
+          className="inline-block px-6 py-2 bg-hu-po-jin text-dai-qing-dark rounded font-serif-display tracking-widest hover:bg-hu-po-jin-light transition-colors text-sm"
+        >
+          登录后详批
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-ink-100 p-6">
+    <div className="rounded-lg border border-dai-qing-light/30 bg-dai-qing-dark/60 backdrop-blur p-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="font-serif-display text-lg text-ink-900 tracking-widest">
           AI 详批

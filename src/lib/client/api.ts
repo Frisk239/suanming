@@ -76,10 +76,15 @@ export async function streamInterpret(
     body: JSON.stringify({ chart: input, persona: options.persona, depth: options.depth }),
     signal: cb.signal,
   });
-  // 非 2xx：同步阶段（排盘/解读/检索）失败，后端返回 JSON { error }
+  // 非 2xx：401=未登录（详批门槛），其他=同步阶段（排盘/解读/检索）失败。
+  // 401 带 __NEEDS_AUTH__: 前缀，InterpretPanel 据此展示登录引导（而非普通错误）。
   if (!resp.ok || !resp.body) {
     const e = await resp.json().catch(() => ({}));
-    cb.onError(e.error ?? `详批失败 ${resp.status}`);
+    if (resp.status === 401) {
+      cb.onError(`__NEEDS_AUTH__:${e.error ?? '请先登录'}`);
+    } else {
+      cb.onError(e.error ?? `详批失败 ${resp.status}`);
+    }
     return;
   }
 
