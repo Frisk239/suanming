@@ -1,9 +1,8 @@
 // src/components/auth/LoginCard.tsx
 // 登录/注册卡片（12-login.html 1:1 照抄，spec M5 用户系统）。
 //
-// 三种方式都走浏览器 client（src/lib/supabase/client.ts，@supabase/ssr）：
-//   ① 邮箱+密码：登入 / 注册 tab 切换（注册即自动登录，若未开邮箱确认）
-//   ② 魔法链接：发邮件，点链接走 /auth/callback 兑换 session
+// 纯邮箱+密码登录（浏览器 client @supabase/ssr）。登入/注册 tab 切换，
+// 邮箱确认已在 Supabase 后台关闭——注册即登录，不发邮件（消除 rate limit）。
 // 成功后 router.refresh() 触发 Server Component 重取 session。
 //
 // 视觉严格对齐 12-login.html（max-width 420px / padding 40px 32px 32px / 各间距原值）。
