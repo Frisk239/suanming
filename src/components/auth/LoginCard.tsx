@@ -1,17 +1,12 @@
 // src/components/auth/LoginCard.tsx
-// 登录/注册卡片（12-login.html 深度复刻，spec M5 用户系统）。
+// 登录/注册卡片（12-login.html 1:1 照抄，spec M5 用户系统）。
 //
 // 三种方式都走浏览器 client（src/lib/supabase/client.ts，@supabase/ssr）：
 //   ① 邮箱+密码：登入 / 注册 tab 切换（注册即自动登录，若未开邮箱确认）
 //   ② 魔法链接：发邮件，点链接走 /auth/callback 兑换 session
 // 成功后 router.refresh() 触发 Server Component 重取 session。
 //
-// 视觉（12-login.html）：
-//   - 双层框卡片（外黛青边 + 内琥珀金细边 inset 7px）
-//   - 登入/注册 tab：墨痕下划线（active 琥珀金渐变 + glow）
-//   - qn-inkline 墨线输入（focus 琥珀金高亮线展开）
-//   - 登入按钮：黛青底 + 玄纸字 + 圆角 + 光泽扫过（非琥珀金）
-//   - tab 切换副标题：故人重入 / 新缘初结
+// 视觉严格对齐 12-login.html（max-width 420px / padding 40px 32px 32px / 各间距原值）。
 
 'use client';
 
@@ -82,9 +77,9 @@ export function LoginCard() {
   const switchBtn = mode === 'signin' ? '前往注册' : '前往登入';
 
   return (
-    <div className="w-full max-w-[420px]">
+    <div className="login-wrap relative z-[2] w-full max-w-[420px]">
       {/* 品牌标题：拜帖 / 入青囊 */}
-      <div className="text-center mb-1">
+      <div className="brand-title text-center mb-1">
         <span className="block font-serif text-[11px] tracking-[0.4em] text-hu-po-jin/60 mb-2">
           拜 帖
         </span>
@@ -94,8 +89,8 @@ export function LoginCard() {
       </div>
 
       {/* 双层框登录卡片 */}
-      <div className="relative">
-        <div className="relative mt-9 bg-xuan-zhi-warm border border-dai-qing/15 rounded-md px-8 py-10 pb-8 overflow-hidden shadow-[0_30px_90px_-24px_rgba(0,26,26,0.55),0_8px_28px_-12px_rgba(0,51,51,0.28)]">
+      <div className="card-wrap relative">
+        <div className="login-card relative mt-9 bg-xuan-zhi-warm border border-dai-qing/15 rounded-md overflow-hidden shadow-[0_30px_90px_-24px_rgba(0,26,26,0.55),0_8px_28px_-12px_rgba(0,51,51,0.28)] pt-10 px-8 pb-8">
           {/* 内层琥珀金细边 inset 7px */}
           <span className="pointer-events-none absolute inset-[7px] z-20 rounded border border-hu-po-jin/20" />
 
@@ -106,7 +101,7 @@ export function LoginCard() {
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`relative flex-1 pb-3 pt-1 font-serif text-[17px] tracking-[0.3em] transition-colors ${
+                className={`relative flex-1 pt-1 pb-3 bg-transparent border-0 cursor-pointer font-serif text-[17px] tracking-[0.3em] transition-colors ${
                   mode === m
                     ? 'text-dai-qing after:content-[""] after:absolute after:left-[24%] after:right-[24%] after:-bottom-px after:h-0.5 after:rounded-full after:bg-hu-po-jin after:shadow-[0_0_8px_rgba(212,175,55,0.45)]'
                     : 'text-dai-qing/35 hover:text-dai-qing/60'
@@ -151,7 +146,7 @@ export function LoginCard() {
             <button
               type="submit"
               disabled={busy}
-              className="qn-sheen-sweep relative w-full mt-2 py-3.5 px-8 bg-dai-qing text-xuan-zhi-warm rounded-[14px] overflow-hidden font-serif text-[15px] tracking-[0.3em] shadow-[0_4px_14px_rgba(0,77,77,0.18)] transition-all hover:bg-dai-qing-dark hover:-translate-y-px disabled:opacity-50"
+              className="qn-sheen-sweep relative w-full mt-2 py-3.5 px-8 bg-dai-qing text-xuan-zhi-warm border-0 rounded-[14px] overflow-hidden font-serif text-[15px] tracking-[0.3em] shadow-[0_4px_14px_rgba(0,77,77,0.18)] transition-all hover:bg-dai-qing-dark hover:-translate-y-px disabled:opacity-50"
             >
               {busy ? '处 理 中…' : submitLabel}
             </button>
@@ -176,11 +171,11 @@ export function LoginCard() {
 
           {/* 切换提示 */}
           <p className="mt-5 text-center text-[13px] text-dai-qing/50">
-            {switchLabel}
+            {switchLabel}{' '}
             <button
               type="button"
               onClick={() => setMode((m) => (m === 'signin' ? 'signup' : 'signin'))}
-              className="bg-transparent border-0 text-hu-po-jin-dark text-[13px] hover:text-hu-po-jin hover:underline ml-1"
+              className="bg-transparent border-0 text-hu-po-jin-dark text-[13px] cursor-pointer hover:text-hu-po-jin hover:underline"
             >
               {switchBtn}
             </button>
@@ -204,6 +199,7 @@ export function LoginCard() {
 /**
  * 墨线下划线输入（qn-inkline，12-login.html 招牌样式）。
  * 透明背景 + 底部细线，focus 时琥珀金高亮线展开。
+ * 严格照原型：input padding 10px 4px，ink 高亮线 height 1.5px。
  */
 function InkLine({
   type,
@@ -226,7 +222,7 @@ function InkLine({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
-        className="w-full bg-transparent border-0 border-b border-dai-qing/15 outline-none px-1 py-2.5 text-dai-qing text-[15px] placeholder:text-dai-qing/25 focus:border-transparent transition-colors"
+        className="w-full bg-transparent border-0 border-b border-dai-qing/15 outline-none px-1 py-2.5 text-dai-qing text-[15px] placeholder:text-dai-qing/25 focus:border-b-transparent transition-colors"
       />
       <span
         className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-hu-po-jin to-hu-po-jin/30 origin-left transition-transform duration-300"
