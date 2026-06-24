@@ -1,9 +1,11 @@
-// src/app/bazi/page.tsx
+// src/app/(app)/bazi/page.tsx
 // /bazi 主页面（spec 5.2/5.6/5.8）。合并录入+排盘+详批，状态机编排。
 // 分享 URL：出生信息（匿名，不含 name）编码到 query，刷新可复现表单（spec 5.2）。
 //
 // 结构：page（壳，Suspense 边界）→ BaziPageContent（client，用 useSearchParams）。
 // useSearchParams 在 Next 16 需 Suspense 包裹（否则 prerender 退化为全 CSR + build 警告）。
+//
+// 注：M5 迁入 route group (app)，URL /bazi 不变。Task 10d 会深度复刻 11-bazi.html 重做。
 
 'use client';
 
@@ -19,7 +21,7 @@ import type { ChartState, BirthFormState } from '@/types/ui';
 
 export default function BaziPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-ink-50" />}>
+    <Suspense fallback={<main className="min-h-screen" />}>
       <BaziPageContent />
     </Suspense>
   );
@@ -76,7 +78,7 @@ function BaziPageContent() {
   };
 
   return (
-    <main className="min-h-screen bg-ink-50 py-8 px-4">
+    <main className="min-h-screen py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
         {/* 录入（始终展示，便于改参数重排，spec 5.6） */}
         <BirthForm initial={initialForm} onSubmit={handleSubmit} loading={loading} />

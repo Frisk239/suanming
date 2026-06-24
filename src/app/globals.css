@@ -123,6 +123,38 @@ body {
 }
 
 /*
+ * 华彩招牌动画（03-nav-and-cards.html / 10-home.html / 11-bazi.html 实测 keyframes）。
+ * 集中放在 :root 外的顶层，供组件类引用。
+ */
+
+/* 品牌名金光呼吸：drop-shadow 强弱循环（青囊招牌，品牌/标题用） */
+@keyframes glow-breathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.6));
+  }
+}
+.qn-glow-breathe {
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+
+/* 光泽扫过按钮（11-bazi.html submit-btn::after）：白色斜切光带从左到右 */
+.qn-sheen-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(-100%) skewX(-12deg);
+  transition: transform 0.7s;
+}
+.qn-sheen-sweep:hover::after {
+  transform: translateX(100%) skewX(-12deg);
+}
+
+/*
  * 表单复用组件类（spec 5.5）。Tailwind v4 用 @layer components + @apply。
  * 华彩深底适配：input 用深墨底 + 玄纸字，seg-btn 同理。
  */

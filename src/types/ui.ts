@@ -41,3 +41,26 @@ export interface ChartState {
   chart: BaziChart;
   analysis: BaziAnalysisResult;
 }
+
+/**
+ * 模块配置（spec M5 可扩展导航）。modules.ts 注册所有 Tab，
+ * TopNav/BottomNav 据此渲染。新增模块只改 modules.ts，不改组件。
+ */
+export type ModuleStatus = 'live' | 'soon';
+
+export interface ModuleConfig {
+  /** 路由 id，同时是 URL 段（如 'bazi' → /bazi） */
+  id: string;
+  /** 显示名（八字/紫微/六爻/合盘） */
+  label: string;
+  /** 中文副标题/说明（占位页用） */
+  tagline: string;
+  /** 上线状态：live=可用，soon=未上线占位 */
+  status: ModuleStatus;
+  /** 导航排序（升序） */
+  order: number;
+  /** 底部导航是否固定展示（核心模块） */
+  pinnedBottom?: boolean;
+  /** 单字图标（青囊功能卡片用，如 '命'/'卦'/'紫'） */
+  icon?: string;
+}
