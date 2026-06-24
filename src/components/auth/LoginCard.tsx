@@ -36,35 +36,11 @@ export function LoginCard() {
           ? await supabase.auth.signInWithPassword({ email, password })
           : await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      if (mode === 'signup') {
-        setMsg('注册成功，请查收确认邮件（若已启用邮箱确认）');
-      } else {
-        router.refresh(); // 触发 Server Component 重取 session
-      }
+      // 注册即登录（邮箱确认已在 Supabase 后台关闭，不发邮件）。
+      // 两种模式成功后都直接 refresh，触发根布局重取 session。
+      router.refresh();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : '操作失败');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleMagicLink = async () => {
-    if (!email) {
-      setErr('请先填写邮箱');
-      return;
-    }
-    setBusy(true);
-    setErr('');
-    setMsg('');
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${location.origin}/auth/callback` },
-      });
-      if (error) throw error;
-      setMsg('魔法链接已发送至邮箱，请查收并点击链接登录');
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : '发送失败');
     } finally {
       setBusy(false);
     }
@@ -149,23 +125,6 @@ export function LoginCard() {
               className="qn-sheen-sweep relative w-full mt-2 py-3.5 px-8 bg-dai-qing text-xuan-zhi-warm border-0 rounded-[14px] overflow-hidden font-serif text-[15px] tracking-[0.3em] shadow-[0_4px_14px_rgba(0,77,77,0.18)] transition-all hover:bg-dai-qing-dark hover:-translate-y-px disabled:opacity-50"
             >
               {busy ? '处 理 中…' : submitLabel}
-            </button>
-
-            {/* 分隔线 */}
-            <div className="flex items-center gap-3 my-5">
-              <span className="flex-1 h-px bg-dai-qing/10" />
-              <span className="text-[11px] tracking-[0.2em] text-dai-qing/40">或</span>
-              <span className="flex-1 h-px bg-dai-qing/10" />
-            </div>
-
-            {/* 魔法链接（次级描边按钮） */}
-            <button
-              type="button"
-              onClick={handleMagicLink}
-              disabled={busy}
-              className="w-full mt-1 py-2.5 border border-dai-qing/25 bg-transparent text-dai-qing rounded-[10px] text-[13px] tracking-[0.1em] transition-all hover:border-hu-po-jin hover:text-hu-po-jin-dark disabled:opacity-50"
-            >
-              发送魔法链接（邮箱一键登录）
             </button>
           </form>
 
