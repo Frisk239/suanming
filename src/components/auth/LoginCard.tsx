@@ -3,18 +3,16 @@
 //
 // 纯邮箱+密码登录（浏览器 client @supabase/ssr）。登入/注册 tab 切换，
 // 邮箱确认已在 Supabase 后台关闭——注册即登录，不发邮件（消除 rate limit）。
-// 成功后 router.refresh() 触发 Server Component 重取 session。
+// 登录成功后整页跳转首页，强制根布局 SSR 重取 session（见下方说明）。
 //
 // 视觉严格对齐 12-login.html（max-width 420px / padding 40px 32px 32px / 各间距原值）。
 
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export function LoginCard() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -36,10 +34,10 @@ export function LoginCard() {
           : await supabase.auth.signUp({ email, password });
       if (error) throw error;
       // 注册即登录（邮箱确认已在 Supabase 后台关闭，不发邮件）。
-      // 两种模式成功后都跳首页。先 refresh 触发根布局重取 session，
-      // 再 replace 跳转（replace 让登录页不留在历史栈，返回键不回到登录页）。
-      router.refresh();
-      router.replace('/');
+      // 整页跳转首页：强制根布局重新 SSR 取 session，TopNav 登录态同步刷新。
+      // 不能用 client router.refresh（SessionProvider 的 user prop 来自服务端，
+      // client 跳转不会重新下发，TopNav 仍显示「登录/注册」）。
+      window.location.href = '/';
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : '操作失败');
     } finally {

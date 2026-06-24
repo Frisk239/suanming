@@ -8,11 +8,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export function SignOutButton() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const supabase = createClient();
 
@@ -23,9 +21,10 @@ export function SignOutButton() {
     } catch {
       // 即使 signOut 报错也继续跳转（本地 session 已无意义）
     }
-    // refresh 让根布局重取 session（变回未登录），再跳首页
-    router.refresh();
-    router.replace('/');
+    // 整页跳转首页：强制根布局重新 SSR 取 session（client router.refresh
+    // 不会更新 SessionProvider 的静态 prop，TopNav 不会刷新登录态）。
+    // 退出直接回首页，不显示 account 未登录页。
+    window.location.href = '/';
   };
 
   return (
