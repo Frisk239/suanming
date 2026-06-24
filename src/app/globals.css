@@ -155,6 +155,120 @@ body {
 }
 
 /*
+ * 波浪墨海（01-ink-sea.html / 10-home.html 像素级复刻）。
+ * 两张 webp + CSS 动画（非 Canvas/SVG）。InkSea 组件用这些类。
+ */
+/* 起伏层：origin 在底部，上下浮动 + 轻微纵向缩放，营造海浪呼吸 */
+.ink-sea__layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transform-origin: 50% 100%;
+  will-change: transform;
+  animation: ink-wave-bob ease-in-out infinite;
+}
+/* 横滚轨道：flex 横排两张相同图，max-content 宽，marquee 横滚 */
+.ink-sea__track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  will-change: transform;
+  animation: marquee-scroll linear infinite;
+}
+.ink-sea__track img {
+  height: 100%;
+  width: auto;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+@keyframes ink-wave-bob {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(var(--bob-amp, 8px)) scaleY(1.03);
+  }
+}
+/* 横滚：向左移 50%（轨道里两份相同图，移一半无缝衔接） */
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * 浮字（02-glyphs.html / 10-home.html glyph-field）。
+ * 星宿字网格化散布，单字横向 / 双字纵向竖排，opacity 氛围级。
+ */
+@keyframes glyph-float {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+  }
+  18% {
+    opacity: var(--glyph-peak, 0.16);
+  }
+  60% {
+    opacity: calc(var(--glyph-peak, 0.16) * 0.7);
+  }
+  85% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.05);
+  }
+}
+.qn-glyph {
+  font-family: 'Songti SC', 'SimSun', serif;
+  line-height: 1.1;
+  user-select: none;
+  position: absolute;
+  will-change: opacity, transform;
+  animation: glyph-float ease-in-out infinite;
+}
+.qn-glyph--vert {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.1em;
+}
+.qn-glyph--ink {
+  color: #004d4d;
+  --glyph-peak: 0.13;
+}
+.qn-glyph--gold {
+  color: var(--color-hu-po-jin);
+  --glyph-peak: 0.18;
+}
+
+/*
+ * 流光鎏金大字（10-home.html gold-foil-text / 11-bazi.html 标题）。
+ * 实心琥珀金 + glow-breathe 辉光（简化版，不用纹理——纹理在小字落空）。
+ */
+.qn-gold-foil {
+  display: inline-block;
+  color: var(--color-hu-po-jin);
+  font-family: 'Songti SC', 'SimSun', serif;
+  font-weight: bold;
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+
+/* 示例输出框的 lamp 灯晕（10-home.html demo-lamp）：呼吸式外扩光圈 */
+@keyframes lamp-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(212, 175, 55, 0);
+  }
+}
+.qn-lamp-pulse {
+  animation: lamp-pulse 2.4s ease-in-out infinite;
+}
+
+/*
  * 表单复用组件类（spec 5.5）。Tailwind v4 用 @layer components + @apply。
  * 华彩深底适配：input 用深墨底 + 玄纸字，seg-btn 同理。
  */
