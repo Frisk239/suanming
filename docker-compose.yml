@@ -19,5 +19,5 @@ services:
       dockerfile: docker/embed-svc.Dockerfile
     restart: always
     volumes:
-      - /opt/suanming/models:/models:ro
+      - /root/suanming/models:/models:ro
     # 不映射端口：仅 compose 内网用服务名 http://embed-svc:8765 访问
