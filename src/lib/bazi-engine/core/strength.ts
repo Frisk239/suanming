@@ -92,9 +92,9 @@ export function calculateStrength(chart: BaziChart): StrengthResult {
     score: Math.round(score * 10) / 10, // 保留 1 位小数
     level: scoreToLevel(score),
     breakdown: {
-      deLing,
-      deDi,
-      deShi,
+      deLing: Math.round(deLing * 10) / 10,
+      deDi: Math.round(deDi * 10) / 10,
+      deShi: Math.round(deShi * 10) / 10,
       dongTai: 0, // MVP 置 0，变局第四层后续补（spec 2.2）
     },
     ratio,

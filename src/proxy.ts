@@ -7,15 +7,15 @@
 // 每次请求用 refresh_token 刷新 session cookie，保证 Server Component 能读到有效 session。
 // 不强制登录（排盘免费，spec 5.3）——仅维持 session，登录门槛在 interpret route 内做（Task 9）。
 // matcher 排除静态资源与图片。
+//
+// 网络说明：Supabase 国内可直连（实测稳定），无需代理。
+// 早期误以为需翻墙加了 setupProxy，实测代理导致间歇性 UND_ERR_CONNECT_TIMEOUT，
+// 故移除。详见 admin.ts 注释。
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { setupProxy } from '@/lib/supabase/proxy';
 
 export async function proxy(request: NextRequest) {
-  // proxy 跑在 Node runtime，进程级代理初始化一次即可
-  setupProxy();
-
   const response = NextResponse.next({ request });
 
   const supabase = createServerClient(

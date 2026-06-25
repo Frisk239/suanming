@@ -5,13 +5,13 @@
 // 与 admin.ts（service_role 绕过 RLS）区分：这个用 anon key + 用户 session，受 RLS 约束。
 //
 // Next 16 注意：cookies() 是 async，必须 await（v15.0.0-RC 起，docs 确认）。
+//
+// 网络说明：Supabase 国内可直连（实测稳定），无需代理。见 admin.ts 注释。
 
 import { createServerClient as createSSRClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { setupProxy } from './proxy';
 
 export async function createServerClient() {
-  setupProxy(); // 服务端 fetch 走代理（本机翻墙，生产无变量则直连）
   const cookieStore = await cookies();
   return createSSRClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
