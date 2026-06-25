@@ -23,7 +23,7 @@ interface Props {
 const SUGGESTIONS = ['事业哪年有转机', '财运要注意什么', '婚姻感情如何', '健康要留意什么'];
 
 export function AskPanel({ profileId }: Props) {
-  const { messages, streaming, error, needsAuth, ask, stop } = useAskStream();
+  const { messages, streaming, error, needsAuth, retryable, ask, retry, stop } = useAskStream();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -106,7 +106,17 @@ export function AskPanel({ profileId }: Props) {
       </div>
 
       {error && (
-        <p className="text-vermillion text-xs mb-2 px-1">⚠ {error}</p>
+        <div className="flex items-center gap-3 mb-2 px-1">
+          <p className="text-vermillion text-xs">⚠ {error}</p>
+          {retryable && !streaming && (
+            <button
+              onClick={() => retry(profileId)}
+              className="text-xs text-hu-po-jin hover:text-hu-po-jin-dark transition-colors"
+            >
+              ↻ 重试
+            </button>
+          )}
+        </div>
       )}
 
       {/* 输入区：玄纸暖浅底适配（非深底 .input 类） */}
