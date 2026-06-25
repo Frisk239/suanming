@@ -12,6 +12,9 @@ import type { BaziAnalysisResult } from '@/lib/bazi-engine';
 import type { InterpretOptions } from '@/types/ui';
 import { parseSSEStream } from './sse';
 
+/** 429 指数退避 sleep（spec 6.3） */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /** ①层排盘：POST /api/bazi/chart → { chart } */
 export async function fetchChart(
   input: ChartInput,
@@ -72,14 +75,22 @@ export async function streamInterpret(
     signal?: AbortSignal;
   },
 ): Promise<void> {
-  const resp = await fetch('/api/bazi/interpret', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chart: input, persona: options.persona, depth: options.depth }),
-    signal: cb.signal,
-  });
-  // 复用公共 SSE 解析（M7 抽出）。401 会带 __NEEDS_AUTH__: 前缀，InterpretPanel 据此展示登录引导。
-  await parseSSEStream(resp, {
+  const body = JSON.stringify({ chart: input, persona: options.persona, depth: options.depth });
+  let resp: Response;
+  // 429 指数退避重试（spec 6.3）：1s/2s，最多 3 次
+  for (let attempt = 0; attempt < 3; attempt++) {
+    resp = await fetch('/api/bazi/interpret', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: cb.signal,
+    });
+    if (resp.status !== 429) break;
+    if (attempt < 2) await sleep(1000 * 2 ** attempt); // 1s, 2s（第3次不再等）
+  }
+  // 429 重试用尽 → parseSSEStream 因 !resp.ok 透传「当前使用人数较多」文案
+  // 409/401/其他非 ok → parseSSEStream 同样透传 {error} 文案（401 带 __NEEDS_AUTH__: 前缀）
+  await parseSSEStream(resp!, {
     onToken: cb.onToken,
     onError: cb.onError,
     onDone: cb.onDone,

@@ -57,13 +57,20 @@ export function useAskStream() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        const resp = await fetch('/api/bazi/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profileId, message }),
-          signal: ctrl.signal,
-        });
-        await parseSSEStream(resp, {
+        let resp: Response;
+        // 429 指数退避重试（spec 6.3）：1s/2s，最多 3 次
+        for (let attempt = 0; attempt < 3; attempt++) {
+          resp = await fetch('/api/bazi/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileId, message }),
+            signal: ctrl.signal,
+          });
+          if (resp.status !== 429) break;
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+        }
+        // 409/429 文案由 parseSSEStream 的 !resp.ok 分支透传到 onError
+        await parseSSEStream(resp!, {
           onToken: (t) => {
             if (!mountedRef.current) return;
             setMessages((prev) => {
