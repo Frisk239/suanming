@@ -14,6 +14,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAskStream } from '@/hooks/useAskStream';
+import { AskMarkdown } from './AskMarkdown';
 
 interface Props {
   profileId: string;
@@ -181,8 +182,8 @@ function MessageBubble({
           <div className="flex items-center gap-1.5 mb-1 ml-1">
             <span className="font-serif-display text-xs text-hu-po-jin tracking-wider">青囊</span>
           </div>
-          <div className="rounded-r-lg rounded-tl-lg border-l-2 border-hu-po-jin bg-xuan-zhi-warm border border-hu-po-jin/15 px-4 py-2.5 text-sm text-dai-qing-dark whitespace-pre-wrap leading-relaxed shadow-sm">
-            {content}
+          <div className="rounded-r-lg rounded-tl-lg border-l-2 border-hu-po-jin bg-xuan-zhi-warm border border-hu-po-jin/15 px-4 py-2.5 text-dai-qing-dark leading-relaxed shadow-sm">
+            <AskMarkdown content={content} />
             {streaming && <span className="animate-pulse text-hu-po-jin font-bold">▌</span>}
           </div>
         </div>
