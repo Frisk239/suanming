@@ -1,9 +1,12 @@
 # docker/next-app.Dockerfile
 # Next.js standalone 多阶段构建。镜像小（只含 standalone 产物 + static + public）。
+# 注意：next build 需要 devDependencies（@tailwindcss/postcss / typescript / @types），
+# 故 builder 阶段装全依赖；最终 runner 只 COPY standalone 产物（不含 node_modules）。
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# 装全依赖（含 dev）供 builder 使用
+RUN npm ci
 
 FROM node:20-alpine AS builder
 WORKDIR /app
