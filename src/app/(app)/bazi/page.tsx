@@ -98,7 +98,9 @@ function BaziPageContent() {
             <>
               <ChartBoard chart={chartState.chart} />
               <AnalysisPanel analysis={chartState.analysis} />
-              {lastInput && <InterpretPanel input={lastInput} />}
+              {lastInput && (
+                <InterpretPanel input={lastInput} profileId={chartState.profileId} />
+              )}
             </>
           )}
         </div>

@@ -10,12 +10,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useInterpretStream } from '@/hooks/useInterpretStream';
 import { useSession } from '@/components/auth/SessionProvider';
+import { AskPanel } from './AskPanel';
 import type { ChartInput } from '@/types/bazi';
 import type { InterpretOptions } from '@/types/ui';
 
 interface Props {
   /** 排盘入参（详批后端内部自行排盘+解读+检索） */
   input: ChartInput;
+  /** M7：登录用户排盘建的 birth_profile id（追问用）。未登录为空则不显示追问 */
+  profileId?: string;
 }
 
 // 二级段元信息（prompt.ts 的 ## 标题）。结论段 desc 列五主题。
@@ -126,7 +129,7 @@ function RichText({ text }: { text: string }) {
   );
 }
 
-export function InterpretPanel({ input }: Props) {
+export function InterpretPanel({ input, profileId }: Props) {
   const { user } = useSession();
   const [options, setOptions] = useState<InterpretOptions>({
     persona: 'scholar',
@@ -309,6 +312,9 @@ export function InterpretPanel({ input }: Props) {
           </div>
         </>
       )}
+
+      {/* M7：解读完成后嵌入追问区（登录且有 profileId 才显示） */}
+      {!streaming && content && profileId && <AskPanel profileId={profileId} />}
     </div>
   );
 }
