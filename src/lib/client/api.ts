@@ -10,6 +10,7 @@
 import type { ChartInput, BaziChart } from '@/types/bazi';
 import type { BaziAnalysisResult } from '@/lib/bazi-engine';
 import type { InterpretOptions } from '@/types/ui';
+import { parseSSEStream } from './sse';
 
 /** ①层排盘：POST /api/bazi/chart → { chart } */
 export async function fetchChart(
@@ -77,45 +78,10 @@ export async function streamInterpret(
     body: JSON.stringify({ chart: input, persona: options.persona, depth: options.depth }),
     signal: cb.signal,
   });
-  // 非 2xx：401=未登录（详批门槛），其他=同步阶段（排盘/解读/检索）失败。
-  // 401 带 __NEEDS_AUTH__: 前缀，InterpretPanel 据此展示登录引导（而非普通错误）。
-  if (!resp.ok || !resp.body) {
-    const e = await resp.json().catch(() => ({}));
-    if (resp.status === 401) {
-      cb.onError(`__NEEDS_AUTH__:${e.error ?? '请先登录'}`);
-    } else {
-      cb.onError(e.error ?? `详批失败 ${resp.status}`);
-    }
-    return;
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = '';
-  // SSE 按行分割；保留最后一段不完整行到 buf，下次拼接
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    const lines = buf.split('\n');
-    buf = lines.pop() ?? ''; // 最后一段可能不完整，留作下次
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const payload = trimmed.slice(5).trim();
-      if (payload === '[DONE]') {
-        cb.onDone();
-        return;
-      }
-      try {
-        const obj = JSON.parse(payload) as { token?: string; error?: string };
-        if (obj.token) cb.onToken(obj.token);
-        else if (obj.error) cb.onError(obj.error);
-      } catch {
-        // 非 JSON 帧跳过（如 SSE 注释行 : keepalive）
-      }
-    }
-  }
-  // 流自然结束（无显式 [DONE]）也视为完成
-  cb.onDone();
+  // 复用公共 SSE 解析（M7 抽出）。401 会带 __NEEDS_AUTH__: 前缀，InterpretPanel 据此展示登录引导。
+  await parseSSEStream(resp, {
+    onToken: cb.onToken,
+    onError: cb.onError,
+    onDone: cb.onDone,
+  });
 }
