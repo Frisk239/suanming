@@ -143,4 +143,28 @@ describe('retriever · 双路检索', () => {
     // 这种情况下 retrieve 不抛错，interpret 会拿到空 classics，走 prompt 的"未检索到"分支
     // 这是设计选择：检索降级而非硬失败（命例坏掉不应阻断整次详评）
   });
+
+  it('M6c：向量路 score < 0.5 的低质结果应过滤（语料扩充后防噪声）', async () => {
+    // 语料扩充后向量路可能召回相关性弱的结果（如伤官格召回到"论疾病"），
+    // 加 0.5 阈值过滤低质，精确路（穷通宝鉴固定1.0）不受影响。
+    mockRpc.mockResolvedValue({
+      data: [
+        vecResult('滴天髓阐微', '论七杀', '相关内容'.repeat(20), 0.7), // 保留
+        vecResult('三命通会', '论疾病', '弱相关内容'.repeat(20), 0.4), // 过滤（<0.5）
+        vecResult('杂书', '噪声', '不相关内容'.repeat(20), 0.3), // 过滤（<0.5）
+      ],
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          ilike: () => ({ limit: () => ({ data: [], error: null }) }),
+        }),
+      }),
+    });
+    const results = await retrieve(sampleQuery);
+    // 只保留 score >= 0.5 的 1 条向量结果
+    expect(results.length).toBe(1);
+    expect(results[0].score).toBeGreaterThanOrEqual(0.5);
+  });
 });

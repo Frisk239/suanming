@@ -59,13 +59,22 @@ function buildQueryText(query: RetrievalQuery): string {
   return `这是一个${query.patternName}的命盘，日主${query.dayMaster}${query.strengthLevel}生于${query.monthBranch}月，用神为${query.yongshenPrimary}`;
 }
 
+/**
+ * 向量路 score 阈值（M6c）。
+ * 语料扩充后（1137 切片）向量路可能召回相关性弱的结果（如伤官格召回到"论疾病"），
+ * 过滤 < 0.5 的低质结果防噪声。精确路（穷通宝鉴调候固定 1.0）不受影响。
+ */
+const VECTOR_SCORE_THRESHOLD = 0.5;
+
 /** 双路检索 + 融合去重（精确优先，因为调候最相关） */
 export async function retrieve(query: RetrievalQuery): Promise<RetrievalResult[]> {
   const queryText = buildQueryText(query);
-  const [semantic, exact] = await Promise.all([
+  const [semanticRaw, exact] = await Promise.all([
     vectorSearch(queryText, 8),
     exactLookup(query, 4),
   ]);
+  // 向量路过滤低质结果（精确路 score 固定 1.0，无需过滤）
+  const semantic = semanticRaw.filter((r) => r.score >= VECTOR_SCORE_THRESHOLD);
   // 融合去重（按 content 前 50 字判重）
   const seen = new Set<string>();
   const merged: RetrievalResult[] = [];
