@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+docs
+sample
+references
+models
+scripts/data
+scripts/_check-db.ts
+.env
+.env.local
+.env.production
+*.log
+Dockerfile
+docker
