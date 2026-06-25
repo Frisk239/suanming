@@ -53,4 +53,40 @@ describe('embedder · HTTP 客户端', () => {
     await embedBatch([]);
     expect(mockFetch.mock.calls[0][0]).toBe('http://127.0.0.1:8765/embed-batch');
   });
+
+  it('配 EMBED_API_KEY 时走 OpenAI 格式（DeepInfra）', async () => {
+    process.env.EMBED_API_KEY = 'sk-test-key';
+    process.env.EMBED_MODEL = 'BAAI/bge-m3';
+    process.env.EMBED_URL = 'https://api.deepinfra.com/v1/openai/embeddings';
+    const fakeVec = Array.from({ length: 1024 }, () => 0.3);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [{ embedding: fakeVec }] }),
+    });
+    const vec = await embed('测试');
+    expect(vec.length).toBe(1024);
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://api.deepinfra.com/v1/openai/embeddings');
+    expect(opts.headers.Authorization).toBe('Bearer sk-test-key');
+    expect(JSON.parse(opts.body)).toEqual({ model: 'BAAI/bge-m3', input: ['测试'] });
+    delete process.env.EMBED_API_KEY;
+    delete process.env.EMBED_MODEL;
+    delete process.env.EMBED_URL;
+  });
+
+  it('配 EMBED_API_KEY 时 embedBatch 走 OpenAI 格式', async () => {
+    process.env.EMBED_API_KEY = 'sk-test-key';
+    process.env.EMBED_URL = 'https://api.deepinfra.com/v1/openai/embeddings';
+    const vec = Array.from({ length: 1024 }, () => 0.4);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [{ embedding: vec }, { embedding: vec }] }),
+    });
+    const vecs = await embedBatch(['甲', '乙']);
+    expect(vecs.length).toBe(2);
+    const [, opts] = mockFetch.mock.calls[0];
+    expect(JSON.parse(opts.body)).toEqual({ model: 'BAAI/bge-m3', input: ['甲', '乙'] });
+    delete process.env.EMBED_API_KEY;
+    delete process.env.EMBED_URL;
+  });
 });

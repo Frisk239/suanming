@@ -1,42 +1,64 @@
 // src/lib/rag/embedder.ts
-// BGE-M3 embedding 的 HTTP 客户端。
+// BGE-M3 embedding 客户端。双格式适配（spec 4.2）：
+//   - 无 EMBED_API_KEY：本地微服务（POST {EMBED_URL}/embed body {text} → {embedding}）
+//   - 有 EMBED_API_KEY：外部 API（DeepInfra，OpenAI 格式 POST {EMBED_URL} body {model,input} Bearer → {data:[{embedding}]})
+// 切换只需配 env，不改代码。建库和查询必须同一路径（向量空间一致）。
 //
-// 实际推理在 Python 微服务（scripts/embed-server.py，FastAPI + GPU，本地常驻）。
-// 这样建库和查询用同一模型同一实现，向量空间完全一致
-// （之前 ONNX/PyTorch 不一致，余弦仅 0.775；统一后 >0.999）。
-//
-// 微服务地址由 EMBED_URL 配置（默认 http://127.0.0.1:8765）。
-// localhost 调用不走代理（不调 setupProxy）；靠 .env.local 的 NO_PROXY=localhost,127.0.0.1
-// 防止 undici 全局代理拦截。生产（Vercel）调 Railway 上的微服务，HTTPS_PROXY 留空。
+// 注：env 逐次读取（非模块级常量），保证运行时切换 env 生效（如测试中动态设 env）。
 
-const EMBED_URL = process.env.EMBED_URL ?? 'http://127.0.0.1:8765';
+/** 读 EMBED_API_KEY：有=外部 API（DeepInfra），无=本地微服务 */
+function apiKey(): string | undefined {
+  return process.env.EMBED_API_KEY;
+}
+
+function headers(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  const key = apiKey();
+  if (key) h.Authorization = `Bearer ${key}`;
+  return h;
+}
 
 /** 单条文本 → 1024 维归一化向量 */
 export async function embed(text: string): Promise<number[]> {
-  const resp = await fetch(`${EMBED_URL}/embed`, {
+  const url = process.env.EMBED_URL ?? 'http://127.0.0.1:8765';
+  const model = process.env.EMBED_MODEL ?? 'BAAI/bge-m3';
+  const key = apiKey();
+  const resp = await fetch(`${url}${key ? '' : '/embed'}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    headers: headers(),
+    body: key
+      ? JSON.stringify({ model, input: [text] })
+      : JSON.stringify({ text }),
   });
   if (!resp.ok) {
     const detail = await resp.text().catch(() => '');
     throw new Error(`embed 服务返回 ${resp.status}: ${detail}`);
   }
-  const data = (await resp.json()) as { embedding: number[] };
-  return data.embedding;
+  const data = (await resp.json()) as { embedding?: number[]; data?: { embedding: number[] }[] };
+  return key ? (data.data?.[0]?.embedding ?? []) : (data.embedding ?? []);
 }
 
-/** 批量 embedding（建库用；微服务内部分批 encode 防 OOM） */
+/** 批量 embedding（建库用） */
 export async function embedBatch(texts: string[]): Promise<number[][]> {
-  const resp = await fetch(`${EMBED_URL}/embed-batch`, {
+  const url = process.env.EMBED_URL ?? 'http://127.0.0.1:8765';
+  const model = process.env.EMBED_MODEL ?? 'BAAI/bge-m3';
+  const key = apiKey();
+  const resp = await fetch(`${url}${key ? '' : '/embed-batch'}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ texts }),
+    headers: headers(),
+    body: key
+      ? JSON.stringify({ model, input: texts })
+      : JSON.stringify({ texts }),
   });
   if (!resp.ok) {
     const detail = await resp.text().catch(() => '');
     throw new Error(`embed-batch 服务返回 ${resp.status}: ${detail}`);
   }
-  const data = (await resp.json()) as { embeddings: number[][] };
-  return data.embeddings;
+  const data = (await resp.json()) as {
+    embeddings?: number[][];
+    data?: { embedding: number[] }[];
+  };
+  return key
+    ? (data.data?.map((d) => d.embedding) ?? [])
+    : (data.embeddings ?? []);
 }
