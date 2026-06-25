@@ -27,6 +27,11 @@ function listMd(dir: string): string[] {
  * xuanxue：按目标书目目录扫，每个 md = 一个章节（纯古文无 markdown 标题）。
  * 注：只收八字核心书（避免把 3124 个文件全 embedding）。
  *   神峰通考在 xuanxue 里实际写作"神锋通考"（锋，已核验）。
+ *
+ * M6b 三命通会智能过滤（spec 4.2）：290 章含 119 章「六X日XX时断」逐日逐时
+ * 查表噪声（卷八~九，60甲子日×12时辰吉凶断），无理论价值且污染检索——
+ * 用户问"七杀格"可能召回到"六甲日甲子时断"的无关命例。过滤后保留卷一~七+
+ * 卷十的 171 章八字核心（神煞/格局/财官印/女命/口诀）。
  */
 function loadXuanxue(): RawDoc[] {
   const root = path.join(SAMPLE_ROOT, '03-corpus-classics/xuanxue/docs');
@@ -49,10 +54,22 @@ function loadXuanxue(): RawDoc[] {
       if (!content) continue;
       // 章节名：去 .md、去开头数字前缀（如 001、000），例 "000滴天髓阐微：通神论天道" → "滴天髓阐微：通神论天道"
       const chapter = file.replace(/\.md$/, '').replace(/^\d+/, '').trim() || file;
+      // M6b：三命通会过滤「六X日XX时断」查表噪声（卷八~九，逐日逐时吉凶断）
+      if (book === '三命通会' && isDayHourLookupNoise(chapter)) continue;
       docs.push({ source: 'xuanxue', book, chapter, content });
     }
   }
   return docs;
+}
+
+/**
+ * 三命通会查表噪声判定（M6b）。
+ * 卷八~九的「六甲日甲子时断」「六乙日丁丑时断」等是 60甲子日×12时辰的逐日逐时
+ * 吉凶查表，119 章，重复性极高、无命理理论价值，会污染向量检索。排除之。
+ */
+function isDayHourLookupNoise(chapter: string): boolean {
+  // 匹配「六[十干]日...时断」，如"卷 八·六甲日甲子时断（以下所忌月分与时间断）"
+  return /六[甲乙丙丁戊己庚辛壬癸]日.{0,8}时断/.test(chapter);
 }
 
 /**
@@ -76,8 +93,9 @@ function loadLookfate(): RawDoc[] {
     }
   }
 
-  // 目录形式：神峰通考/、千里命稿/、命理约言/（实测为目录，卷X 分章）
-  const targetDirs = ['神峰通考', '千里命稿', '命理约言'];
+  // 目录形式：千里命稿/（xuanxue 缺的）。注：神峰通考/命理约言 xuanxue 已收，
+  // 此处不再重复（M6b 去重——避免同书两源重复入库污染检索）。
+  const targetDirs = ['千里命稿'];
   for (const d of targetDirs) {
     const dir = path.join(root, d);
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
