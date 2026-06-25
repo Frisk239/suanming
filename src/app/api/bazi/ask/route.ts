@@ -184,32 +184,29 @@ export async function POST(request: NextRequest) {
         const msg = e instanceof Error ? e.message : '追问失败';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
       } finally {
-        // 8. 回写会话（即使出错/空也回写用户消息，保持对话连续性）
-        const newMessages: ConversationMessage[] = [
-          ...messages,
-          { role: 'user', content: message, tokens: estimateTokens(message) },
-        ];
+        // 8. 回写会话：仅当流成功完成（有 fullAnswer）才回写完整一问一答。
+        //    失败时（fullAnswer 为空）不回写——避免孤儿 user 消息污染后续 context。
         if (fullAnswer) {
-          newMessages.push({
-            role: 'assistant',
-            content: fullAnswer,
-            tokens: estimateTokens(fullAnswer),
-          });
-        }
-        try {
-          await supabase
-            .from('conversations')
-            .update({
-              messages: newMessages,
-              message_count: newMessages.length,
-              summary: compressedSummary,
-              summary_until_idx: compressedUntilIdx,
-              total_tokens: (conv.total_tokens ?? 0) + estimateTokens(message + fullAnswer),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', conv.id);
-        } catch {
-          // 回写失败不阻断已完成的流
+          const newMessages: ConversationMessage[] = [
+            ...messages,
+            { role: 'user', content: message, tokens: estimateTokens(message) },
+            { role: 'assistant', content: fullAnswer, tokens: estimateTokens(fullAnswer) },
+          ];
+          try {
+            await supabase
+              .from('conversations')
+              .update({
+                messages: newMessages,
+                message_count: newMessages.length,
+                summary: compressedSummary,
+                summary_until_idx: compressedUntilIdx,
+                total_tokens: (conv.total_tokens ?? 0) + estimateTokens(message + fullAnswer),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', conv.id);
+          } catch {
+            // 回写失败不阻断已完成的流
+          }
         }
         controller.close();
       }
