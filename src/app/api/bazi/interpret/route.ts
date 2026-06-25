@@ -24,6 +24,12 @@ import {
 } from '@/lib/supabase/snapshot';
 import type { ChartInput } from '@/types/bazi';
 import type { Persona, Depth } from '@/lib/llm/types';
+import {
+  acquire,
+  release,
+  tryAcquireGlobal,
+  releaseGlobal,
+} from '@/lib/concurrency';
 
 export async function POST(request: NextRequest) {
   // 详批门槛（spec 5.3，M5）：排盘免费，AI 详批需登录。
@@ -35,6 +41,14 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: '请先登录后再使用 AI 详批' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // 全局限流（spec 6.3）：防多用户突发打爆 4 核。最早插入，在任何 DB 工作之前。
+  if (!tryAcquireGlobal()) {
+    return new Response(JSON.stringify({ error: '当前使用人数较多，请稍后重试' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '5' },
     });
   }
 
@@ -60,10 +74,22 @@ export async function POST(request: NextRequest) {
     const profile = await findOrCreateProfile(user.id, chartInput);
     profileId = profile.id;
 
+    // 同用户同盘锁（spec 6.2）：防同用户连点/多标签页。
+    if (!acquire(user.id, profile.id)) {
+      releaseGlobal(); // 释放全局名额（这次请求不消耗）
+      return new Response(JSON.stringify({ error: '上一条详批还在生成，请稍候' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // M7：useCache 且有 interpret 快照 → 直接返回快照全文（不重调 DeepSeek）
     if (useCache) {
       const cached = await findInterpretSnapshot(profileId);
       if (cached?.content) {
+        // 快照命中是「免费」路径（不调 LLM/不 embed），必须释放两锁，否则挤占全局名额
+        release(user.id, profile.id);
+        releaseGlobal();
         return cachedResponse(cached.content);
       }
     }
@@ -96,6 +122,9 @@ export async function POST(request: NextRequest) {
     systemPrompt = buildSystemPrompt(interpretInput);
     userPrompt = buildUserPrompt(interpretInput);
   } catch (e: unknown) {
+    // 准备阶段出错：释放已获取的锁（profileId 若已赋值则同用户锁已 acquire）
+    if (profileId) release(user.id, profileId);
+    releaseGlobal();
     const msg = e instanceof Error ? e.message : '详评准备失败';
     return new Response(JSON.stringify({ error: msg }), {
       status: 400,
@@ -119,6 +148,9 @@ export async function POST(request: NextRequest) {
         const msg = e instanceof Error ? e.message : 'LLM 调用失败';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
       } finally {
+        // 释放并发锁（流结束/出错都触发）
+        release(user.id, profileId);
+        releaseGlobal();
         // M7：流成功有全文则存 interpret 快照（含 classics 供追问复用）
         if (fullText && profileId) {
           await saveInterpretSnapshot(
