@@ -1,0 +1,23 @@
+# docker-compose.yml
+# 全量自托管软上线编排（spec 第 3 节）。
+# 部署：docker compose build && docker compose up -d
+services:
+  next-app:
+    build:
+      context: .
+      dockerfile: docker/next-app.Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file: .env.production
+    depends_on:
+      - embed-svc
+
+  embed-svc:
+    build:
+      context: .
+      dockerfile: docker/embed-svc.Dockerfile
+    restart: always
+    volumes:
+      - /opt/suanming/models:/models:ro
+    # 不映射端口：仅 compose 内网用服务名 http://embed-svc:8765 访问
