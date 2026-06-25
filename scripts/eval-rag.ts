@@ -15,7 +15,7 @@ const SAMPLE_ROOT = path.resolve(process.cwd(), 'sample/sample-project');
 const XUANXUE_ROOT = path.join(SAMPLE_ROOT, '03-corpus-classics/xuanxue/docs');
 const LOOKFATE_ROOT = path.join(SAMPLE_ROOT, '03-corpus-classics/lookfate-book/content/命');
 
-/** xuanxue 8 本八字核心书（与 corpus-loader loadXuanxue 的 targetBooks 一致） */
+/** xuanxue 八字核心书（与 corpus-loader loadXuanxue 的 targetBooks 一致） */
 const XUANXUE_BOOKS = [
   '滴天髓阐微',
   '滴天髓-原文',
@@ -25,10 +25,18 @@ const XUANXUE_BOOKS = [
   '神锋通考', // 目录名用"锋"（corpus-loader 已核验）
   '命理探源',
   '命理约言',
+  // M6b 语料扩充新增
+  '五行精纪',
+  '李虚中命书',
+  '御定子平',
+  '子平管见',
 ];
 
 /** lookfate 补充书（与 corpus-loader loadLookfate 一致） */
 const LOOKFATE_BOOKS = ['五行大义', '千里命稿', '命理约言', '神峰通考'];
+
+/** guji 外部下载书（与 corpus-loader loadGuji 一致，M6b 新增） */
+const GUJI_BOOKS = ['渊海子平', '造化元钥(评注)'];
 
 /** 仅收录 .md 文件，跳过 index.md */
 function listMd(dir: string): string[] {
@@ -117,10 +125,18 @@ async function diagnose() {
     console.log(`${book} | ${sampleN} | ${dbN} | ${statusMark(dbN, sampleN)}`);
   }
 
+  console.log('\n【guji 源·M6b外部下载】书名 | DB chunk | 状态');
+  console.log('---|---|---');
+  for (const book of GUJI_BOOKS) {
+    const dbN = db[book] ?? 0;
+    totalDb += dbN;
+    console.log(`${book} | (外部) | ${dbN} | ${dbN > 0 ? '✅' : '❌ 未入库'}`);
+  }
+
   console.log(`\n合计：sample ${totalSample} 章节 / DB ${totalDb} chunk`);
 
   // DB 里有但 sample 列表没有的书（排查异常）
-  const knownBooks = new Set([...XUANXUE_BOOKS, ...LOOKFATE_BOOKS]);
+  const knownBooks = new Set([...XUANXUE_BOOKS, ...LOOKFATE_BOOKS, ...GUJI_BOOKS]);
   const extra = Object.keys(db).filter((b) => !knownBooks.has(b));
   if (extra.length > 0) {
     console.log(`\n【DB 额外书】(不在 corpus-loader 目标列表)：${extra.join(', ')}`);
