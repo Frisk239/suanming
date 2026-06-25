@@ -6,6 +6,10 @@ services:
     build:
       context: .
       dockerfile: docker/next-app.Dockerfile
+      args:
+        # build-time 公开 env（构建时内联进产物）。值来自 build 命令的 --env-file（.env.production）。
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     restart: always
     ports:
       - "3000:3000"
