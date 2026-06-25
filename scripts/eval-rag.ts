@@ -127,9 +127,63 @@ async function diagnose() {
   }
 }
 
-// 检索抽检（Task 5 Step 5 实现）
+// 检索抽检（Task 5 Step 5）：代表性 query 看召回质量——覆盖新语料 + 排查噪声
 async function retrieval() {
-  console.log('检索抽检功能见 Task 5 Step 5（待实现）');
+  const { retrieve } = await import('@/lib/rag/retriever');
+  // 代表性 query：覆盖不同格局/用神/日主，检验：
+  //   ① 新增语料（渊海子平/五行精纪/造化元钥）是否被合理召回
+  //   ② 三命通会过滤后无"六X日XX时断"噪声残留
+  //   ③ score 分布合理（相关内容 0.5+）
+  const queries = [
+    {
+      name: '七杀格身弱（M2辛金案例方向）',
+      q: { patternName: '七杀格', yongshenPrimary: '土', strengthLevel: '偏弱', dayMaster: '辛', monthBranch: '午' },
+    },
+    {
+      name: '伤官格（应召回渊海子平论伤官）',
+      q: { patternName: '伤官格', yongshenPrimary: '火', strengthLevel: '偏弱', dayMaster: '己', monthBranch: '巳' },
+    },
+    {
+      name: '七杀格身强火炼秋金（乾隆方向）',
+      q: { patternName: '羊刃格', yongshenPrimary: '火', strengthLevel: '偏强', dayMaster: '庚', monthBranch: '酉' },
+    },
+    {
+      name: '冬水调候（曾国藩方向，应召回穷通宝鉴/造化元钥）',
+      q: { patternName: '七杀格', yongshenPrimary: '木', strengthLevel: '偏弱', dayMaster: '丙', monthBranch: '亥' },
+    },
+  ];
+
+  console.log('=== M6b 检索抽检（RAG 重建后）===\n');
+  for (const { name, q } of queries) {
+    console.log(`\n【${name}】`);
+    try {
+      const results = await retrieve(q);
+      if (results.length === 0) {
+        console.log('  ⚠️ 无召回结果');
+        continue;
+      }
+      for (const r of results.slice(0, 6)) {
+        const score = r.score.toFixed(3);
+        console.log(`  [${score}] ${r.chunk.book} · ${r.chunk.chapter}`);
+        console.log(`    ${r.chunk.content.slice(0, 70).replace(/\n/g, ' ')}...`);
+      }
+    } catch (e) {
+      console.log(`  ❌ 检索失败: ${(e as Error).message}`);
+    }
+  }
+
+  // 噪声排查：抽查是否有"六X日XX时断"残留
+  console.log('\n=== 噪声排查：三命通会过滤是否生效 ===');
+  const supabase = createAdmin();
+  const { data: noiseCheck } = await supabase
+    .from('knowledge_chunks')
+    .select('book,chapter')
+    .eq('book', '三命通会')
+    .or('chapter.like.%六甲日%,chapter.like.%六乙日%,chapter.like.%六丙日%');
+  const noise = (noiseCheck ?? []).filter((r: { chapter: string }) =>
+    /六[甲乙丙丁戊己庚辛壬癸]日.{0,8}时断/.test(r.chapter)
+  );
+  console.log(`  三命通会「六X日XX时断」残留: ${noise.length} 条（应为 0）`);
 }
 
 const mode = process.argv[2] ?? 'diagnose';
