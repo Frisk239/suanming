@@ -79,3 +79,39 @@ describe('重复源去重（M6b）', () => {
     expect([...bookNames][0]).toBe('神锋通考');
   });
 });
+
+describe('语料扩充（M6b）：sample 现成古籍 + 外部下载', () => {
+  // sample 现成 4 本高价值古籍（xuanxue 目录里之前漏收的）
+  it('应收录五行精纪（古法纳音体系集大成）', () => {
+    const docs = loadAllCorpus();
+    expect(docs.some((d) => d.book === '五行精纪')).toBe(true);
+    expect(docs.filter((d) => d.book === '五行精纪').length).toBeGreaterThan(20);
+  });
+
+  it('应收录李虚中命书（古法禄命祖师）', () => {
+    const docs = loadAllCorpus();
+    expect(docs.some((d) => d.book === '李虚中命书')).toBe(true);
+  });
+
+  it('应收录御定子平（清康熙官修）+ 子平管见（明格局歌诀）', () => {
+    const docs = loadAllCorpus();
+    expect(docs.some((d) => d.book === '御定子平')).toBe(true);
+    expect(docs.some((d) => d.book === '子平管见')).toBe(true);
+  });
+
+  // 外部下载的渊海子平完整版（按《论XX》切分）
+  it('应收录渊海子平完整版（guji 源，按论篇切分多章）', () => {
+    const docs = loadAllCorpus().filter((d) => d.book === '渊海子平');
+    expect(docs.length).toBeGreaterThan(30); // 完整版应切出几十个论篇
+    expect(docs.every((d) => d.source === 'guji')).toBe(true);
+    // 抽查核心论篇存在
+    expect(docs.some((d) => d.chapter.includes('论七杀'))).toBe(true);
+    expect(docs.some((d) => d.chapter.includes('论伤官'))).toBe(true);
+    expect(docs.some((d) => d.chapter.includes('六亲'))).toBe(true);
+  });
+
+  it('应收录造化元钥评注版（穷通宝鉴逐月调候增强）', () => {
+    const docs = loadAllCorpus();
+    expect(docs.some((d) => d.book === '造化元钥(评注)')).toBe(true);
+  });
+});

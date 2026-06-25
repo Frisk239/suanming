@@ -10,13 +10,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export interface RawDoc {
-  source: 'xuanxue' | 'lookfate' | 'bazi-mingli';
+  source: 'xuanxue' | 'lookfate' | 'bazi-mingli' | 'guji';
   book: string;
   chapter: string;
   content: string;
 }
 
 const SAMPLE_ROOT = path.resolve(process.cwd(), 'sample/sample-project');
+const GUJI_ROOT = path.join(SAMPLE_ROOT, 'guji'); // M6b 外部下载的高质量古籍
 
 /** 仅收录 .md 文件，跳过 index.md */
 function listMd(dir: string): string[] {
@@ -45,6 +46,11 @@ function loadXuanxue(): RawDoc[] {
     '神锋通考', // 实测目录名用"锋"（非"峰"）
     '命理探源',
     '命理约言',
+    // M6b 语料扩充：sample 现成高价值古籍（子平派之外的补充）
+    '五行精纪', // 南宋廖中，古法纳音体系集大成，与子平派互补
+    '李虚中命书', // 古法禄命祖师，纳音根脉
+    '御定子平', // 清康熙官修四库本，用神/病神表述经典
+    '子平管见', // 明雷鸣夏，格局歌诀+注解，天然适合 LLM 引用
   ];
   for (const book of targetBooks) {
     const dir = path.join(root, book);
@@ -131,7 +137,101 @@ function loadBaziMingli(): RawDoc[] {
   return docs;
 }
 
+/**
+ * guji：M6b 外部下载的高质量古籍（sample 缺失或残缺的补全）。
+ * 来源见 docs/superpowers/HANDOFF.md M6 章节。
+ *   - 渊海子平.txt（mymmsc/books 仓库）：子平派开山祖完整版，sample 仅残缺 2 章
+ *     按《论XX》章节标题切分（txt 无 md 结构，需手动分章）
+ *   - 造化元钥(评注).md（xx.theovan.cn 仓库）：穷通宝鉴评注版，逐月调候用神增强
+ */
+function loadGuji(): RawDoc[] {
+  const docs: RawDoc[] = [];
+  if (!fs.existsSync(GUJI_ROOT)) return docs;
+
+  // 1. 渊海子平完整版 txt：按《论XX》/《XX赋》/《XX歌》等标题切分
+  const yuanhaiTxt = path.join(GUJI_ROOT, '渊海子平.txt');
+  if (fs.existsSync(yuanhaiTxt)) {
+    docs.push(...splitYuanhaiZiping(yuanhaiTxt));
+  }
+
+  // 2. 造化元钥评注版（穷通宝鉴评注）：整体作为一个文档（已按月分节）
+  const zaohuaPath = path.join(GUJI_ROOT, 'xx.theovan.cn/content/命/造化元钥(评注).md');
+  if (fs.existsSync(zaohuaPath)) {
+    const content = fs.readFileSync(zaohuaPath, 'utf-8').trim();
+    if (content) {
+      docs.push({
+        source: 'guji',
+        book: '造化元钥(评注)',
+        chapter: '穷通宝鉴评注·逐月调候',
+        content,
+      });
+    }
+  }
+
+  return docs;
+}
+
+/**
+ * 切分渊海子平 txt：按《论XX》/《XX赋》/《XX歌》/《XX诀》等书名号标题分章。
+ * 大类分节【渊海子平】基础/十神/神煞/六亲/女命/赋论 作为章节前缀。
+ */
+function splitYuanhaiZiping(txtPath: string): RawDoc[] {
+  const raw = fs.readFileSync(txtPath, 'utf-8');
+  const lines = raw.split(/\r?\n/);
+  const docs: RawDoc[] = [];
+
+  let currentSection = '基础'; // 【渊海子平】XX 大类
+  let currentTitle = ''; // 《论XX》章节标题
+  let buffer: string[] = [];
+
+  const flush = () => {
+    const content = buffer.join('\n').trim();
+    if (currentTitle && content.length > 30) {
+      docs.push({
+        source: 'guji',
+        book: '渊海子平',
+        chapter: `${currentSection}·${currentTitle}`,
+        content,
+      });
+    }
+    buffer = [];
+  };
+
+  for (const line of lines) {
+    // 大类分节：【渊海子平】神煞 / 【渊海子平】六亲 等
+    const sectionMatch = line.match(/^【渊海子平】\s*(.+)$/);
+    if (sectionMatch) {
+      flush();
+      currentSection = sectionMatch[1].trim() || '基础';
+      currentTitle = '';
+      continue;
+    }
+    // 章节标题：《论XX》《XX赋》《XX歌》《XX诀》《XX篇》《XX说》
+    const titleMatch = line.match(/^《([^》]{2,20})》\s*(.*)$/);
+    if (titleMatch) {
+      // 《诗诀》是上文论篇的附诗口诀，不单独成章，追加到当前论篇内容
+      // （否则会产生大量只有一首四句诗的碎片章节，污染检索）
+      const title = titleMatch[1].replace(/\s+/g, '').trim();
+      if (/^诗诀?$|^诗訣$/.test(title)) {
+        if (currentTitle) buffer.push(line);
+        continue;
+      }
+      flush();
+      currentTitle = title;
+      // 标题行后的说明文字（如《论XX》各有所喜）也算内容
+      const rest = titleMatch[2].trim();
+      if (rest) buffer.push(rest);
+      continue;
+    }
+    if (currentTitle) {
+      buffer.push(line);
+    }
+  }
+  flush();
+  return docs;
+}
+
 /** 加载全部语料（建库脚本调用） */
 export function loadAllCorpus(): RawDoc[] {
-  return [...loadXuanxue(), ...loadLookfate(), ...loadBaziMingli()];
+  return [...loadXuanxue(), ...loadLookfate(), ...loadBaziMingli(), ...loadGuji()];
 }
