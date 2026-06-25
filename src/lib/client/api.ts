@@ -29,13 +29,14 @@ export async function fetchChart(
 }
 
 /**
- * ②层解读：POST /api/bazi/analyze → { chart, analysis }
+ * ②层解读：POST /api/bazi/analyze → { chart, analysis, profileId? }
  * 后端内部先①层排盘再②层解读，一次返回（spec 5.6 串行调用的优化合并版）。
  * 入参是 ChartInput（与 chart 端点一致），不是排盘 JSON。
+ * M7：登录用户后端建 birth_profile 并返回 profileId（追问用），未登录无此字段。
  */
 export async function fetchAnalysis(
   input: ChartInput,
-): Promise<{ chart: BaziChart; analysis: BaziAnalysisResult }> {
+): Promise<{ chart: BaziChart; analysis: BaziAnalysisResult; profileId?: string }> {
   const resp = await fetch('/api/bazi/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

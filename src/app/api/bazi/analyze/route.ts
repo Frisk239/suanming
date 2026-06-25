@@ -2,13 +2,20 @@
 //
 // ②层解读 API：POST /api/bazi/analyze
 // 接受 ChartInput（和 chart 端点一致），内部先①层排盘再②层解读，一次返回 chart + analysis。
-// HTTP 层很薄，只做入参解析和错误处理；解读逻辑在 analyzeBazi。
 //
-// 性质：纯计算（不查库、不写库），免费（spec 1.3/2.2）。
+// 性质：免费（spec 1.3/2.2）。排盘/②层免费，登录/未登录都能用。
+// M7 Phase 1：登录用户存盘面快照（chart/analysis 挂 birth_profiles），
+//   下次同盘进入直接读快照秒开（不重算）。未登录走纯计算原逻辑（不存快照）。
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adaptBaziCore } from '@/lib/bazi/bazi-core-adapter';
 import { analyzeBazi } from '@/lib/bazi-engine';
+import { getSession } from '@/lib/supabase/session';
+import {
+  findOrCreateProfile,
+  isSnapshotValid,
+  saveProfileSnapshot,
+} from '@/lib/supabase/snapshot';
 import type { ChartInput } from '@/types/bazi';
 
 export async function POST(request: NextRequest) {
@@ -20,9 +27,25 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // ①层排盘（复用 M1 adapter）
+    // M7：登录则查盘面快照（秒开），有且版本匹配直接返回
+    const user = await getSession();
+    if (user) {
+      const profile = await findOrCreateProfile(user.id, body as ChartInput);
+      if (isSnapshotValid(profile)) {
+        return NextResponse.json({
+          chart: profile.chart_snapshot,
+          analysis: profile.analysis_snapshot,
+          profileId: profile.id,
+        });
+      }
+      // 无快照/版本不匹配 → 重算并存快照
+      const chart = adaptBaziCore(body as ChartInput);
+      const analysis = analyzeBazi(chart);
+      await saveProfileSnapshot(profile.id, chart, analysis);
+      return NextResponse.json({ chart, analysis, profileId: profile.id });
+    }
+    // 未登录：纯计算原逻辑（不存快照）
     const chart = adaptBaziCore(body as ChartInput);
-    // ②层解读
     const analysis = analyzeBazi(chart);
     return NextResponse.json({ chart, analysis });
   } catch (e: unknown) {

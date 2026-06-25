@@ -6,7 +6,9 @@
 //   → 拼 prompt(buildSystemPrompt/buildUserPrompt) → LLM 流式(getProvider().streamChat)
 // 返回 SSE 流（data: {"token":"..."}\n\n ... data: [DONE]）。
 //
-// HTTP 层薄：只做入参解析、串接、SSE 封装；逻辑在 lib 各模块。
+// 详批门槛（spec 5.3，M5）：排盘免费，AI 详批需登录。
+// M7 Phase 1：登录用户存 interpret 详批快照（全文 + classics 挂 interpretations 表），
+//   下次同盘解读读快照不重调 DeepSeek。需前端带 useCache 才走快照路径（默认仍生成）。
 
 import { NextRequest } from 'next/server';
 import { adaptBaziCore } from '@/lib/bazi/bazi-core-adapter';
@@ -15,14 +17,20 @@ import { retrieve } from '@/lib/rag/retriever';
 import { getProvider } from '@/lib/llm/provider';
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/llm/prompt';
 import { requireUser } from '@/lib/supabase/session';
+import {
+  findOrCreateProfile,
+  findInterpretSnapshot,
+  saveInterpretSnapshot,
+} from '@/lib/supabase/snapshot';
 import type { ChartInput } from '@/types/bazi';
 import type { Persona, Depth } from '@/lib/llm/types';
 
 export async function POST(request: NextRequest) {
   // 详批门槛（spec 5.3，M5）：排盘免费，AI 详批需登录。
   // 未登录返回 401，前端 InterpretPanel 展示「登录后详批」引导。
+  let user;
   try {
-    await requireUser();
+    user = await requireUser();
   } catch {
     return new Response(JSON.stringify({ error: '请先登录后再使用 AI 详批' }), {
       status: 401,
@@ -30,7 +38,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  let body: { chart: ChartInput; persona?: Persona; depth?: Depth };
+  let body: { chart: ChartInput; persona?: Persona; depth?: Depth; useCache?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -40,18 +48,32 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const { chart: chartInput, persona = 'scholar', depth = 'standard' } = body;
+  const { chart: chartInput, persona = 'scholar', depth = 'standard', useCache = true } = body;
 
   // 同步阶段（排盘/解读/检索）：出错直接返回 400
   let systemPrompt: string;
   let userPrompt: string;
+  let classics: Awaited<ReturnType<typeof retrieve>>;
+  let profileId: string | null = null;
   try {
+    // M7：登录用户建/查 profile（追问 context 需 profileId）
+    const profile = await findOrCreateProfile(user.id, chartInput);
+    profileId = profile.id;
+
+    // M7：useCache 且有 interpret 快照 → 直接返回快照全文（不重调 DeepSeek）
+    if (useCache) {
+      const cached = await findInterpretSnapshot(profileId);
+      if (cached?.content) {
+        return cachedResponse(cached.content);
+      }
+    }
+
     // ①层排盘（复用 M1 adapter）
     const chart = adaptBaziCore(chartInput);
     // ②层解读（复用 M2）
     const analysis = analyzeBazi(chart);
     // RAG 检索（双路：向量 + 穷通宝鉴精确）
-    const classics = await retrieve({
+    classics = await retrieve({
       patternName: analysis.pattern.name,
       yongshenPrimary: analysis.yongshen.primary,
       strengthLevel: analysis.strength.level,
@@ -86,8 +108,10 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const provider = getProvider();
+      let fullText = '';
       try {
         await provider.streamChat(systemPrompt, userPrompt, (token) => {
+          fullText += token;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token })}\n\n`));
         });
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
@@ -95,11 +119,43 @@ export async function POST(request: NextRequest) {
         const msg = e instanceof Error ? e.message : 'LLM 调用失败';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
       } finally {
+        // M7：流成功有全文则存 interpret 快照（含 classics 供追问复用）
+        if (fullText && profileId) {
+          await saveInterpretSnapshot(
+            profileId,
+            user.id,
+            fullText,
+            classics,
+            persona,
+            depth,
+          ).catch(() => {
+            // 存快照失败不阻断响应（已流完）
+          });
+        }
         controller.close();
       }
     },
   });
 
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+}
+
+/** 快照命中：把全文作为一次性 SSE 帧返回（前端无感，走同一套解析） */
+function cachedResponse(content: string): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token: content })}\n\n`));
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',

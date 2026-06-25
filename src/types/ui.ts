@@ -40,6 +40,8 @@ export interface BirthFormState {
 export interface ChartState {
   chart: BaziChart;
   analysis: BaziAnalysisResult;
+  /** M7：登录用户排盘建的 birth_profile id（追问 API 入参）。未登录为 null */
+  profileId?: string;
 }
 
 /**
