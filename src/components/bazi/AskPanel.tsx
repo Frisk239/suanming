@@ -107,12 +107,12 @@ export function AskPanel({ profileId }: Props) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 mb-2 px-1">
-          <p className="text-vermillion text-xs">⚠ {error}</p>
+        <div className="flex items-center gap-3 mb-2 p-2 bg-wx-huo/5 rounded">
+          <p className="text-wx-huo text-sm flex-1">⚠ {error}</p>
           {retryable && !streaming && (
             <button
               onClick={() => retry(profileId)}
-              className="text-xs text-hu-po-jin hover:text-hu-po-jin-dark transition-colors"
+              className="text-xs text-hu-po-jin hover:text-hu-po-jin-dark transition-colors shrink-0"
             >
               ↻ 重试
             </button>
