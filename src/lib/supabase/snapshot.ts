@@ -43,7 +43,9 @@ export async function findOrCreateProfile(
   // birth_date 是 date 类型（只日期），birth_time 单独存
   const [datePart, timePart = ''] = input.solarDate.split(' ');
 
-  // 先查同输入的 profile
+  // 先查同输入的 profile。匹配条件含经纬度：出生地不同则真太阳时校正不同，
+  // 是不同的盘，不能命中旧快照（否则换城市会显示旧地点的真太阳时/城市）。
+  // city 名不参与匹配（仅回显用），以经纬度（排盘计算的实际依据）为准。
   const { data: existing } = await supabase
     .from('birth_profiles')
     .select('id, user_id, chart_snapshot, analysis_snapshot, engine_version')
@@ -52,6 +54,8 @@ export async function findOrCreateProfile(
     .eq('birth_date', datePart)
     .eq('birth_time', timePart)
     .eq('use_true_solar', input.useTrueSolar ?? true)
+    .eq('longitude', input.longitude ?? null)
+    .eq('latitude', input.latitude ?? null)
     .maybeSingle();
 
   if (existing) return existing as ProfileSnapshot;
