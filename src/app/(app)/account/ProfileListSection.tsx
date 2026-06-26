@@ -2,6 +2,9 @@
 // 「我的命盘」列表节（M8 历史记录入口）。Server Component。
 // 两步查询（spec 2.2）：profiles + interpretations，JS reduce 取每盘最新详批。
 // 走 createServerClient（带 session，RLS 隔离）。
+//
+// 展示策略：按核心字段（性别+生辰+经纬度）判重，同盘只保留最新一条；
+// 全列表只展示最新 3 个（避免历史无限增长 + 弱化孤儿旧 profile 的影响）。
 
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
@@ -12,6 +15,8 @@ interface ProfileRow {
   gender: string | null;
   birth_date: string | null;
   birth_time: string | null;
+  longitude: number | null;
+  latitude: number | null;
   chart_snapshot: any | null;
   created_at: string;
 }
@@ -45,11 +50,22 @@ export async function ProfileListSection({ userId }: { userId: string }) {
   const supabase = await createServerClient();
 
   // 1. 当前用户所有命盘（倒序）
-  const { data: profiles } = (await supabase
+  const { data: rawProfiles } = (await supabase
     .from('birth_profiles')
-    .select('id, name, gender, birth_date, birth_time, chart_snapshot, created_at')
+    .select('id, name, gender, birth_date, birth_time, longitude, latitude, chart_snapshot, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })) as { data: ProfileRow[] | null };
+
+  // 判重：核心字段（性别+生辰+经纬度）相同的视为同一盘，只保留最新的一条。
+  // 同一盘可能因历史 bug（如修经纬度匹配前的旧 profile）或重新排盘产生多条记录，
+  // 去重后只展示最新的一份，避免历史列表里同盘重复。created_at 已倒序，首条即最新。
+  const seen = new Set<string>();
+  const profiles = (rawProfiles ?? []).filter((p) => {
+    const dedupeKey = `${p.gender}|${p.birth_date}|${p.birth_time}|${p.longitude}|${p.latitude}`;
+    if (seen.has(dedupeKey)) return false;
+    seen.add(dedupeKey);
+    return true;
+  }).slice(0, 3); // 只展示最新 3 个，避免列表无限增长
 
   // 2. 空状态
   if (!profiles || profiles.length === 0) {
