@@ -5,13 +5,14 @@
 // 只展示真实有数据的内容（不写死）：
 //   - 己之所在：nickname(从 profiles 读) + email + 入户/已伴天数(从 created_at 算)
 //   - 安全：登录邮箱 + 修改密码 + 退出
-// 命盘(birth_profiles 空)、偏好(MVP 不做设置 UI)暂不展示，待功能落地再加。
+// 命盘历史：M8 已落地（ProfileListSection）。偏好(MVP 不做设置 UI)暂不展示。
 
 import Link from 'next/link';
 import { getSession } from '@/lib/supabase/session';
 import { createServerClient } from '@/lib/supabase/server';
 import { ChangePasswordCard } from './ChangePasswordCard';
 import { SignOutButton } from './SignOutButton';
+import { ProfileListSection } from './ProfileListSection';
 
 /** section 标题：中文衬线 + 英文小字副标题（青囊实测样式） */
 function SectionTitle({ zh, en }: { zh: string; en: string }) {
@@ -94,6 +95,9 @@ export default async function AccountPage() {
             )}
           </div>
         </section>
+
+        {/* ===== 我的命盘（M8 历史记录）===== */}
+        <ProfileListSection userId={user.id} />
 
         {/* ===== 安全（修改密码 + 退出，真实功能）===== */}
         <section className="rounded-2xl border border-dai-qing/10 bg-xuan-zhi p-6">
