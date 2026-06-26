@@ -74,8 +74,16 @@ export async function streamInterpret(
     onDone: () => void;
     signal?: AbortSignal;
   },
+  /** 是否走服务端 interpret 快照（同盘同人格同深度秒开）。
+   *  「开始详批」首次用 true；「重新生成」/「换人格深度」用 false（明确要新的）。 */
+  useCache = true,
 ): Promise<void> {
-  const body = JSON.stringify({ chart: input, persona: options.persona, depth: options.depth });
+  const body = JSON.stringify({
+    chart: input,
+    persona: options.persona,
+    depth: options.depth,
+    useCache,
+  });
   let resp: Response;
   // 429 指数退避重试（spec 6.3）：1s/2s，最多 3 次
   for (let attempt = 0; attempt < 3; attempt++) {

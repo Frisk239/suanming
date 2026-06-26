@@ -142,16 +142,18 @@ export function InterpretPanel({ input, profileId }: Props) {
   // 排盘/规则解读（①②层）免费，AI 详批（③层）需登录。
   const needsAuth = !user || (!!error && error.startsWith('__NEEDS_AUTH__:'));
 
-  // 切换人格/深度时，若已开始过则重新生成（spec 5.7）
+  // 切换人格/深度时，若已开始过则重新生成（spec 5.7）。
+  // 明确换组合要新的解读 → useCache=false（不走服务端快照，强制调 LLM）。
   useEffect(() => {
     if (started) {
-      start(input, options);
+      start(input, options, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.persona, options.depth]);
 
   const begin = () => {
     setStarted(true);
+    // 首次「开始详批」：同盘同人格同深度有快照就秒开（useCache 默认 true）
     start(input, options);
   };
 
@@ -225,7 +227,7 @@ export function InterpretPanel({ input, profileId }: Props) {
               </button>
             ) : (
               <button
-                onClick={() => start(input, options)}
+                onClick={() => start(input, options, false)}
                 className="text-sm text-hu-po-jin hover:text-hu-po-jin-dark"
               >
                 ↻ 重新生成

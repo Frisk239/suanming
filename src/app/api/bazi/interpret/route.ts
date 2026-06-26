@@ -83,9 +83,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // M7：useCache 且有 interpret 快照 → 直接返回快照全文（不重调 DeepSeek）
+    // M7：useCache 且有【同人格+同深度】interpret 快照 → 直接返回（不重调 DeepSeek）。
+    // 按 persona/depth 精确查，换人格/深度会查不到 → 走 LLM 生成该组合的新解读。
     if (useCache) {
-      const cached = await findInterpretSnapshot(profileId);
+      const cached = await findInterpretSnapshot(profileId, persona, depth);
       if (cached?.content) {
         // 快照命中是「免费」路径（不调 LLM/不 embed），必须释放两锁，否则挤占全局名额
         release(user.id, profile.id);

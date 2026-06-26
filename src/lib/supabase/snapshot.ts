@@ -101,22 +101,29 @@ export async function saveProfileSnapshot(
     .eq('id', profileId);
 }
 
-/** 读该 profile 最新一条 interpret 详批快照（含 classics）。无则 null。 */
+/**
+ * 读该 profile 最新一条 interpret 详批快照（含 classics）。无则 null。
+ * 可选 persona/depth：传入时按该人格+深度组合精确查（interpret 缓存路径用，
+ * 避免换人格/深度还命中旧组合的快照）。不传则取该盘最近一条（追问 context 复用用）。
+ */
 export async function findInterpretSnapshot(
   profileId: string,
+  persona?: string,
+  depth?: string,
 ): Promise<InterpretSnapshot | null> {
   const supabase = createAdmin();
-  const { data } = await supabase
+  let query = supabase
     .from('interpretations')
     .select('id, birth_profile_id, content, classics_snapshot')
-    .eq('birth_profile_id', profileId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq('birth_profile_id', profileId);
+  if (persona) query = query.eq('persona', persona);
+  if (depth) query = query.eq('depth', depth);
+  const { data } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle();
   return data as InterpretSnapshot | null;
 }
 
-/** 存 interpret 详批快照（全文 + 古籍）。已存在同 profile 的则更新，否则插入。 */
+/** 存 interpret 详批快照（全文 + 古籍）。已存在【同 profile + 同 persona + 同 depth】的则更新，否则插入。
+ *  按 persona/depth 区分：scholar-standard 与 hermit-popular 各存一条，互不覆盖。 */
 export async function saveInterpretSnapshot(
   profileId: string,
   userId: string,
@@ -126,7 +133,7 @@ export async function saveInterpretSnapshot(
   depth: string,
 ): Promise<void> {
   const supabase = createAdmin();
-  const existing = await findInterpretSnapshot(profileId);
+  const existing = await findInterpretSnapshot(profileId, persona, depth);
   if (existing) {
     await supabase
       .from('interpretations')

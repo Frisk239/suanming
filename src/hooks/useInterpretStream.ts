@@ -26,7 +26,7 @@ export function useInterpretStream() {
     };
   }, []);
 
-  const start = useCallback(async (input: ChartInput, options: InterpretOptions) => {
+  const start = useCallback(async (input: ChartInput, options: InterpretOptions, useCache = true) => {
     setContent('');
     setError('');
     setStreaming(true);
@@ -44,7 +44,7 @@ export function useInterpretStream() {
           if (mountedRef.current) setStreaming(false);
         },
         signal: ctrl.signal,
-      });
+      }, useCache);
     } catch (e) {
       // abort 会抛 AbortError，属正常停止，不视为错误
       if (ctrl.signal.aborted) {
