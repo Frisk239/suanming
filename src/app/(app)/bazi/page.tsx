@@ -9,13 +9,15 @@
 
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { BirthForm } from '@/components/bazi/BirthForm';
 import { ChartBoard } from '@/components/bazi/ChartBoard';
 import { AnalysisPanel } from '@/components/bazi/AnalysisPanel';
 import { InterpretPanel } from '@/components/bazi/InterpretPanel';
 import { GlyphField } from '@/components/home/GlyphField';
+import { useSession } from '@/components/auth/SessionProvider';
+import { savePaipanCache, loadPaipanCache } from '@/lib/client/paipan-cache';
 import { fetchAnalysis } from '@/lib/client/api';
 import type { ChartInput } from '@/types/bazi';
 import type { ChartState, BirthFormState } from '@/types/ui';
@@ -31,10 +33,37 @@ export default function BaziPage() {
 function BaziPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useSession();
   const [chartState, setChartState] = useState<ChartState | null>(null);
   const [lastInput, setLastInput] = useState<ChartInput | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // C 未登录本地暂存：URL 带参数（刷新/分享）时，先读本地秒开，不请求后端
+  useEffect(() => {
+    if (user) return; // 登录走服务端快照
+    // 从 URL 重建 ChartInput（与 initialForm 同源）
+    const y = searchParams.get('y');
+    const m = searchParams.get('m');
+    const d = searchParams.get('d');
+    const h = searchParams.get('h');
+    const mi = searchParams.get('mi');
+    const g = searchParams.get('g');
+    if (!y || !m || !d || !h || !g) return; // 参数不全，不查本地
+    const input: ChartInput = {
+      gender: g as 'male' | 'female',
+      solarDate: `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')} ${h}:${mi ?? '00'}`,
+      longitude: Number(searchParams.get('lng') ?? 0),
+      latitude: Number(searchParams.get('lat') ?? 0),
+      useTrueSolar: searchParams.get('ts') !== '0',
+      sect: 1,
+    };
+    const cached = loadPaipanCache(input);
+    if (cached) {
+      setChartState({ chart: cached.chart, analysis: cached.analysis });
+      setLastInput(input);
+    }
+  }, [user, searchParams]);
 
   // 从 URL query 读初始表单值（分享链接复现，spec 5.2）。匿名，不含 name。
   const initialForm: Partial<BirthFormState> = {
@@ -55,6 +84,10 @@ function BaziPageContent() {
       const result = await fetchAnalysis(input); // 一次拿 chart + analysis
       setChartState(result);
       setLastInput(input);
+      // C 未登录本地暂存（spec 第 4 节）：仅未登录存，登录走服务端快照
+      if (!user && result.chart) {
+        savePaipanCache(input, result.chart, result.analysis);
+      }
       // 写 URL（匿名，不含 name），便于分享复现（spec 5.2）
       const [date, time] = input.solarDate.split(' ');
       const [y, m, d] = date.split('-');
@@ -68,6 +101,8 @@ function BaziPageContent() {
         mi,
         c: input.city ?? '',
         ts: String(input.useTrueSolar ?? true),
+        lng: String(input.longitude ?? 0),
+        lat: String(input.latitude ?? 0),
       });
       router.replace(`/bazi?${q.toString()}`);
     } catch (e: unknown) {
