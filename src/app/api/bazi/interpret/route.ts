@@ -134,6 +134,9 @@ export async function POST(request: NextRequest) {
 
   // SSE 流式（LLM 阶段）：错误以 SSE event 形式吐给前端，不中断流
   const encoder = new TextEncoder();
+  // 客户端断开（点停止/abort）时 abort 这个 controller，让 DeepSeek fetch 也中断，
+  // 避免锁泄漏：旧实现不传 signal，停止后 LLM 在后台空跑~20s 占着锁，换风格撞 409。
+  const llmAbort = new AbortController();
   const stream = new ReadableStream({
     async start(controller) {
       const provider = getProvider();
@@ -142,13 +145,17 @@ export async function POST(request: NextRequest) {
         await provider.streamChat(systemPrompt, userPrompt, (token) => {
           fullText += token;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token })}\n\n`));
-        });
+        }, llmAbort.signal);
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'LLM 调用失败';
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
+        // abort（用户停止）属于正常结束，不吐错误帧
+        const aborted = llmAbort.signal.aborted;
+        if (!aborted) {
+          const msg = e instanceof Error ? e.message : 'LLM 调用失败';
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
+        }
       } finally {
-        // 释放并发锁（流结束/出错都触发）
+        // 释放并发锁（流结束/出错/被取消都触发）
         release(user.id, profileId);
         releaseGlobal();
         // M7：流成功有全文则存 interpret 快照（含 classics 供追问复用）
@@ -166,6 +173,11 @@ export async function POST(request: NextRequest) {
         }
         controller.close();
       }
+    },
+    // 客户端断开（fetch abort / 点停止）时触发：中断 LLM 调用，
+    // start 的 catch→finally 随即释放锁。锁释放逻辑只在 finally，避免 double release。
+    cancel() {
+      llmAbort.abort();
     },
   });
 

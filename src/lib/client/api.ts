@@ -88,6 +88,18 @@ export async function streamInterpret(
     if (resp.status !== 429) break;
     if (attempt < 2) await sleep(1000 * 2 ** attempt); // 1s, 2s（第3次不再等）
   }
+  // 409 同用户锁：点「停止」后立即换风格重新生成时，旧请求的锁可能还在几十 ms
+  // 的释放窗口内（服务端 cancel→abort→finally 链路）。等 600ms 重试一次自愈竞态，
+  // 仍 409 则放弃（说明真有上一条在跑）。只重试一次避免无限等待。
+  if (resp!.status === 409) {
+    await sleep(600);
+    resp = await fetch('/api/bazi/interpret', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: cb.signal,
+    });
+  }
   // 429 重试用尽 → parseSSEStream 因 !resp.ok 透传「当前使用人数较多」文案
   // 409/401/其他非 ok → parseSSEStream 同样透传 {error} 文案（401 带 __NEEDS_AUTH__: 前缀）
   await parseSSEStream(resp!, {
